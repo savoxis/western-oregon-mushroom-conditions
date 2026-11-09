@@ -26,3 +26,7 @@ build.json
 # Analysis scratch outputs (large or re-creatable)
 analysis/*.json
 analysis/*.csv
+
+# Local-only working copies and the private ops runbook (never commit: it maps the infrastructure)
+local/
+RUNBOOK.md
