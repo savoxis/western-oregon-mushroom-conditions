@@ -28,7 +28,8 @@ TAXA = [
 ]
 SPECIES = [t[0] for t in TAXA]
 SINCE_YEAR = 2010
-MAX_ACC_M = 2000
+MAX_ACC_M = 2000          # map dots and land tagging: location good to 2 km
+FETCH_ACC_M = 30000       # blurred records (observers often hide mushroom spots; iNaturalist blurs to ~20 km) kept for zone-level counts and timing only
 LAND_LABELS = {
     "f": "National forest", "b": "BLM land", "s": "State land",
     "l": "County, city, research or other (check rules)", "r": "No-picking or restricted area", "p": "Private or not mapped",
@@ -84,7 +85,7 @@ def fetch_taxon(taxon_key, skip, since=None, log=None):
             if not re.match(r"^\d{4}-\d{2}-\d{2}$", day) or ("/" in ed and ed.split("/")[0][:10] != ed.split("/")[1][:10]):
                 continue
             acc = r.get("coordinateUncertaintyInMeters")
-            if acc is not None and acc > MAX_ACC_M:
+            if acc is not None and acc > FETCH_ACC_M:
                 continue
             lat, lon = r.get("decimalLatitude"), r.get("decimalLongitude")
             if lat is None or lon is None:
@@ -120,6 +121,8 @@ def refresh(con, full=False, log=None):
         con.commit()
         added += n
         _log(log, "sightings: %s %s records %s" % (sp, n, "(incremental)" if since else "(full)"))
+    con.execute("UPDATE sightings SET land='x' WHERE acc > ? AND (land IS NULL OR land != 'x')", (MAX_ACC_M,))   # blurred: never land-tagged or mapped
+    con.commit()
     return added
 
 
@@ -199,7 +202,9 @@ def tag(con, minutes=20, log=None):
 
 def export(con, out_path, log=None):
     init(con)
-    rows = con.execute("SELECT id, sp, date, lat, lon, land FROM sightings ORDER BY date, id").fetchall()
+    allrows = con.execute("SELECT id, sp, date, lat, lon, land, acc FROM sightings ORDER BY date, id").fetchall()
+    rows = [r[:6] for r in allrows if r[6] is None or r[6] <= MAX_ACC_M]
+    blur = [r for r in allrows if r[6] is not None and r[6] > MAX_ACC_M]
     sp_idx = {s: i for i, s in enumerate(SPECIES)}
     data = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -207,13 +212,17 @@ def export(con, out_path, log=None):
         "pending_land": sum(1 for r in rows if r[5] is None),
         "source": "Public observation records via GBIF, mostly iNaturalist research grade (CC licensed); land manager from USGS PAD-US",
         "rows": [[r[0], sp_idx[r[1]], r[2], round(r[3], 3), round(r[4], 3), r[5] or "?"] for r in rows if r[1] in sp_idx],
+        "n_blur": len(blur),
+        "blur_note": "Records whose observers blurred the location (uncertainty 2 to 30 km): date, species and a location rounded to 0.1 degree, "
+                     "for zone-level counts and timing only; never drawn on the map.",
+        "blur": [[sp_idx[r[1]], r[2], round(r[3], 1), round(r[4], 1)] for r in blur if r[1] in sp_idx],
     }
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     tmp = out_path + ".tmp"
     with open(tmp, "w") as fh:
         json.dump(data, fh, separators=(",", ":"))
     os.replace(tmp, out_path)
-    _log(log, "sightings: exported %d records (%d without a land class yet)" % (len(data["rows"]), data["pending_land"]))
+    _log(log, "sightings: exported %d mappable records (%d without a land class yet) and %d blurred records" % (len(data["rows"]), data["pending_land"], len(data["blur"])))
 
 
 def run(con, site_data, full=False, minutes=20, log=None):

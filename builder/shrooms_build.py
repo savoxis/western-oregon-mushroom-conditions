@@ -370,6 +370,7 @@ def features_at(i, dates, precip, tmin, tmax, soil_t, soil_m):
         "air_temp_7d_mean_max": mean(win(tmax, 7)),
         "frost_nights_last3": sum(1 for t in win(tmin, 3) if (t if t is not None else 100) <= 28),
         "frost_nights_last5": sum(1 for t in win(tmin, 5) if (t if t is not None else 100) <= 28),
+        "frost_nights_last14": sum(1 for t in win(tmin, 14) if (t if t is not None else 100) <= 28),
         "last_rain_event": None,
     }
     for threshold in (0.1, 0.5, 1.0):          # same detection logic as the skill's weather.py
@@ -387,7 +388,7 @@ def features_at(i, dates, precip, tmin, tmax, soil_t, soil_m):
     return f
 
 
-SCORE_VERSION = 3
+SCORE_VERSION = 4                  # 4: chanterelle opener 1.0 in, 14-day frost memory (2026-11-09)
 NET_BLOCKED = [False]
 
 
@@ -846,7 +847,7 @@ def build_live(reg, points, con=None, burns=True):
                 mi = merged_inputs(z, con)                       # past-day rain from ERA5 where the database has it (see merged_inputs)
                 if mi:
                     f0 = features_at(mi["base"], mi["dates"], mi["precip"], mi["tmin"], mi["tmax"], mi["soil_t"], mi["soil_m"])
-                    for fk in ("precip_7d", "precip_14d", "precip_30d", "last_rain_event"):
+                    for fk in ("precip_7d", "precip_14d", "precip_30d", "last_rain_event", "frost_nights_last14"):
                         w[fk] = f0[fk]
                     entry["rain_era5_through"] = mi["era5_last"]
                     if month >= 8:                               # season-opener rain since Aug 1 from the database, not a second free-API call
@@ -1069,6 +1070,60 @@ def export_insights(con, series, zones):
 
 
 # ---------------------------------------------------------------- compact datasets for the redesigned front end (site/data/c/*.json)
+def export_metrics(series, live=None):
+    """c/metrics.json: per-species tracking of the model against public reports, refreshed with every build. Model timing = day-of-year
+    percentiles of prime days (score 60+) in complete years; report timing = the same percentiles for public finds (2016 to last year);
+    plus how many zones are in season / prime now and recent finds. Aggregate only."""
+    try:
+        sj = json.load(open(SITE_DATA + "/c/sightings.json"))
+    except Exception:
+        sj = {"species": [], "rows": []}
+    last = datetime.now(TZ).year - 1
+    today = datetime.now(TZ).date()
+
+    def pct(a, p):
+        a = sorted(a)
+        return a[min(len(a) - 1, int(p * len(a)))] if a else None
+    out = {"generated_at": datetime.now(TZ).isoformat(timespec="seconds"), "years": "2016-%d" % last, "species": {}}
+    for sp in ("morel_natural", "king_spring", "chanterelle", "king_fall"):
+        prime, inwin = [], []
+        for k, per in series.items():
+            if k.split("|")[1] != sp:
+                continue
+            for y, arr in per.items():
+                if int(y) > last:
+                    continue
+                for i, v in enumerate(arr):
+                    if v is not None:
+                        inwin.append(i + 1)
+                        if v >= 60:
+                            prime.append(i + 1)
+        rep, recent, latest = [], 0, None
+        if sp in sj["species"]:
+            si = sj["species"].index(sp)
+            for r in [(x[1], x[2]) for x in sj["rows"]] + [(x[0], x[1]) for x in sj.get("blur", [])]:   # mappable + blurred records
+                if r[0] != si:
+                    continue
+                d = date.fromisoformat(r[1])
+                if 2016 <= d.year <= last:
+                    rep.append((d - date(d.year, 1, 1)).days + 1)
+                if 0 <= (today - d).days <= 30:
+                    recent += 1
+                latest = r[1] if latest is None or r[1] > latest else latest
+        now_in = now_prime = 0
+        for e in ((live or {}).get("zones") or {}).values():
+            r = (e.get("species") or {}).get(sp)
+            if r:
+                now_in += 1
+                now_prime += r["score"] >= 60
+        out["species"][sp] = {"model_prime_doy": [pct(prime, .1), pct(prime, .5), pct(prime, .9)], "model_prime_days": len(prime),
+                              "model_window_doy": [min(inwin), max(inwin)] if inwin else None,
+                              "reports_doy": [pct(rep, .1), pct(rep, .5), pct(rep, .9)], "reports_n": len(rep),
+                              "zones_in_season_now": now_in, "zones_prime_now": now_prime, "reports_last_30d": recent, "latest_report": latest}
+    atomic_write(SITE_DATA + "/c/metrics.json", out)
+    return out
+
+
 def export_compact():
     """Flattens the site's JSON into the row-oriented files the redesigned page reads. Reads what the builder just wrote."""
     def rd(name):
@@ -1352,6 +1407,15 @@ def main():
                     br = None
             live["brief"] = br
             atomic_write(SITE_DATA + "/live.json", live)
+            for step in ("sensors", "metrics"):
+                try:
+                    if step == "sensors":
+                        import shrooms_sensors
+                        shrooms_sensors.run(zones, SITE_DATA, log)
+                    else:
+                        export_metrics(ser, live)
+                except Exception as exc:
+                    log("note: %s skipped: %r" % (step, exc))
             export_compact()
             log("live done: %d zones, forecast days attached to %d" % (len(live["zones"]), sum(1 for e in live["zones"].values() if e.get("fc_start"))))
             return 0
@@ -1388,6 +1452,15 @@ def main():
                 pass
             except Exception as exc:
                 log("note: sightings update skipped: %r" % exc)
+            for step in ("sensors", "metrics"):                   # extras: never fail the nightly build
+                try:
+                    if step == "sensors":
+                        import shrooms_sensors
+                        shrooms_sensors.run(zones, SITE_DATA, log)
+                    else:
+                        export_metrics(series, live)
+                except Exception as exc:
+                    log("note: %s skipped: %r" % (step, exc))
             export_compact()
             open(ROOT + "/data/last_nightly", "w").write(datetime.now(TZ).strftime("%F"))
             log("nightly done: %d live scores, snapshot rows %d, weather rows %d" % (scored, n, st["weather_rows"]))

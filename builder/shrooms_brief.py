@@ -15,6 +15,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 CONF = "/etc/shrooms/gemini.json"      # {"api_key": "...", "model": "gemini-flash-latest"}
 NOTE = "Written by an AI model from the numbers on this site. It can be wrong; the scores and the fine print are what count."
@@ -71,7 +72,7 @@ def make_brief(live, zones, con, log, force=False):
     key, model = _conf()
     if not key:
         return None
-    today = datetime.now().strftime("%F")
+    today = datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%F")     # Pacific date, as shown on the site
     have = con.execute("SELECT model, text FROM briefs WHERE date=? AND scope='oregon'", (today,)).fetchone()
     if have and not force:                     # one Gemini call per day unless a rescore asks for a fresh brief
         log("brief: reusing today's stored brief (no API call)")

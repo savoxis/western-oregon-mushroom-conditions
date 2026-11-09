@@ -7,7 +7,7 @@ Tests (unique zone-days, 2016-2025 scored in-season days):
   C  year-swap: score on the find day vs the score on the same calendar window (+-3 d) in other years of the same zone;
      50 = the score adds nothing beyond the calendar.
 """
-import json, math, sys, bisect
+import json, math, os, sys, bisect
 from datetime import date, timedelta
 import numpy as np
 
@@ -57,7 +57,8 @@ for sp in sj["species"]:
                     score[(k[0], int(y), i)] = v
     # target find-days
     tdays = set()
-    for r in sj["rows"]:
+    blur = [[None, x[0], x[1], x[2], x[3]] for x in sj.get("blur", [])] if os.environ.get("INCLUDE_BLUR") == "1" else []
+    for r in sj["rows"] + blur:
         if sj["species"][r[1]] != sp:
             continue
         y, i = doy(r[2])

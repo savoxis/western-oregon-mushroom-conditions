@@ -175,6 +175,38 @@ class Builder(unittest.TestCase):
         finally:
             b._fc_entry = real
 
+    def test_chanterelle_frost_memory_and_opener(self):
+        b = self.b
+        reg = b.sc.load_registry()
+        ch = reg["species"]["chanterelle"]
+        self.assertEqual(ch["trigger"]["opener_rule"]["rolling_7d_precip_in"], 1.0)
+        self.assertEqual(ch["penalties"]["frost_28F_last14d"], 0.5)
+        zone = {"id": "t", "elev_ft": 1000, "coastal": True, "side": "west", "lat": 44.0, "lon": -123.0, "species": ["chanterelle"]}
+        # a 7-day stretch with 1.2 in of rain opens the season (it would not have at the old 1.5 in)
+        times = ["2026-08-%02d" % d for d in range(1, 32)] + ["2026-09-%02d" % d for d in range(1, 31)] + ["2026-10-%02d" % d for d in range(1, 16)]
+        rain = [0.0] * len(times)
+        for i in range(40, 43):
+            rain[i] = 0.4
+        w = {"soil_t_7d_mean": 52, "precip_7d": 1.0, "precip_14d": 2.0, "precip_30d": 3.0, "air_temp_7d_mean_max": 60,
+             "frost_nights_last3": 0, "frost_nights_last5": 0, "frost_nights_last14": 0, "last_rain_event": "2026-10-10",
+             "archive_data": {"daily": {"time": times, "precipitation_sum": rain}}, "data_timestamp": "2026-10-15"}
+        b.FakeDT._now = b.datetime(2026, 10, 15, 12)
+        b.sc.datetime = b.FakeDT
+        try:
+            clear = b.sc.score_species(b.reg_for(reg, zone), "chanterelle", zone, 10, w)
+            self.assertTrue(any("season opened 2026-09-12" in x for x in clear["reasons"]), clear["reasons"])
+            w2 = dict(w, frost_nights_last14=1)
+            frosty = b.sc.score_species(b.reg_for(reg, zone), "chanterelle", zone, 10, w2)
+            self.assertLessEqual(frosty["score"], round(clear["score"] * 0.5) + 1)
+            self.assertIn("frost in the last 14 days", frosty["negatives"])
+            w3 = dict(w, frost_nights_last3=2, frost_nights_last5=2, frost_nights_last14=2)
+            two = b.sc.score_species(b.reg_for(reg, zone), "chanterelle", zone, 10, w3)
+            self.assertLess(two["score"], frosty["score"])          # 2 recent frost nights now also get the short-term penalty
+        finally:
+            b.sc.datetime = b.datetime
+        f = b.features_at(20, ["d%d" % i for i in range(21)], [0.0] * 21, [40.0] * 10 + [27.0] + [40.0] * 10, [60.0] * 21, [50.0] * 21, [0.3] * 21)
+        self.assertEqual(f["frost_nights_last14"], 1)
+
     @unittest.skipUnless(LIVE, "needs --live (network)")
     def test_forecast_day0_matches_live(self):
         b = self.b

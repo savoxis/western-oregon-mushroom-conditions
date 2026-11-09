@@ -291,6 +291,11 @@ def score_species(registry, species_key, zone, month, weather, fires_data=None):
             score *= penalties['frost_28F_last3d']
             negatives.append(f"frost {frost_3d} nights last 3d")
 
+    # Frost memory: any night at 28 F or colder in the last 14 days (fruiting ends with the first frosts)
+    if 'frost_28F_last14d' in penalties and weather.get('frost_nights_last14', 0) > 0:
+        score *= penalties['frost_28F_last14d']
+        negatives.append("frost in the last 14 days")
+
     # Heat penalty
     if 'soil_7d_mean_above' in penalties:
         threshold, factor = penalties['soil_7d_mean_above']
@@ -308,7 +313,7 @@ def score_species(registry, species_key, zone, month, weather, fires_data=None):
     # Single frost for chanterelle
     if species_key == 'chanterelle' and 'single_frost_28F' in penalties:
         frost_3d = weather.get('frost_nights_last3', 0)
-        if frost_3d == 1:
+        if frost_3d >= 1:                    # was == 1, which skipped 2 frost nights in 3 days
             score *= penalties['single_frost_28F']
 
     # Dry gap for chanterelle

@@ -265,6 +265,9 @@ def compute_derived_features(forecast_data, archive_data=None):
                     and (daily_by_date.get(daily_times[i], {}).get('min_temp') or 100) <= 28])
     features['frost_nights_last3'] = frost_3d
     features['frost_nights_last5'] = frost_5d
+    features['frost_nights_last14'] = sum([1 for i in range(max(0, today_idx - 13), today_idx + 1)
+                                           if i >= 0 and i < len(daily_times)
+                                           and (daily_by_date.get(daily_times[i], {}).get('min_temp') or 100) <= 28])
 
     # Snow-free detection
     features['snow_free'] = daily_snow_depth.get(daily_times[today_idx], 0) == 0 if today_idx >= 0 else False

@@ -358,7 +358,7 @@ function showTab(name, link) {
   sync();
   if (link !== false) dash.setLink(name);
   if (name === 'map') redraw(MAPSET);
-  else redraw(['kpi', 'seasons', 'weekly', 'weeklens', 'elev'].concat(EXSET));
+  else redraw(['kpi', 'seasons', 'weekly', 'weeklens', 'elev', 'reality'].concat(EXSET));
 }
 function setDefaultsFromModel(M) {
   if (S.year === null) S.year = M.completeYears[M.completeYears.length - 1];
@@ -649,6 +649,11 @@ function loadSightings() {
       rows: d.rows.map((r) => {
         const t = Date.parse(r[2] + 'T00:00:00Z'), y = new Date(t).getUTCFullYear();
         return { id: r[0], sp: d.species[r[1]], date: r[2], t, y, doy: Math.round((t - Date.UTC(y, 0, 1)) / 864e5) + 1, lat: r[3], lon: r[4], land: r[5] };
+      }),
+      /* blurred-location records: zone-level counts and timing only, never drawn on the map */
+      blur: (d.blur || []).map((r) => {
+        const t = Date.parse(r[1] + 'T00:00:00Z'), y = new Date(t).getUTCFullYear();
+        return { sp: d.species[r[0]], date: r[1], t, y, doy: Math.round((t - Date.UTC(y, 0, 1)) / 864e5) + 1, lat: r[2], lon: r[3], blur: true };
       })
     };
     redraw(['map', 'reality']);
@@ -799,19 +804,21 @@ function nearbyFinds(host, z, sp) {
   if (!SIGHT) { sec.appendChild(h('p', 'zp-note', 'Loading reports...')); loadSightings(); return; }
   const key = SIGHT_KEY[sp], R = 40, kx = Math.cos(z.lat * Math.PI / 180) * 111.32;
   const rows = SIGHT.rows.filter((r) => r.sp === key && Math.hypot((r.lon - z.lon) * kx, (r.lat - z.lat) * 111.2) <= R);
+  const blurR = SIGHT.blur.filter((r) => r.sp === key && Math.hypot((r.lon - z.lon) * kx, (r.lat - z.lat) * 111.2) <= R);
+  const allR = rows.concat(blurR).sort((a, b) => a.t - b.t);
   const nm = FAM[famOf(sp)].short.toLowerCase();
-  if (!rows.length) {
+  if (!allR.length) {
     sec.appendChild(h('p', 'zp-note', 'No public reports of ' + nm + ' on file within 25 miles. Scores here come from the weather model alone.'));
     sec.appendChild(reportLinks('zp-note', 'Been here? Be the first to report on ', 'p'));
     return;
   }
   const ref = sightRef();
-  const recent = rows.filter((r) => r.t <= ref && ref - r.t <= 30 * 864e5);
-  const before = rows.filter((r) => r.t <= ref);
+  const recent = allR.filter((r) => r.t <= ref && ref - r.t <= 30 * 864e5);
+  const before = allR.filter((r) => r.t <= ref);
   const last = before.length ? before[before.length - 1] : null;
-  sec.appendChild(h('p', 'zp-note', fInt(rows.length) + ' reports of ' + nm + ' within 25 miles since 2010; ' + recent.length + ' in the 30 days before ' + fMD(new Date(ref)) + (last ? ' (latest ' + fMD(new Date(last.t)) + ', ' + last.y + ')' : '') + '.'));
+  sec.appendChild(h('p', 'zp-note', fInt(allR.length) + ' reports of ' + nm + ' within 25 miles since 2010' + (blurR.length ? ' (' + blurR.length + ' with locations blurred by the observer)' : '') + '; ' + recent.length + ' in the 30 days before ' + fMD(new Date(ref)) + (last ? ' (latest ' + fMD(new Date(last.t)) + ', ' + last.y + ')' : '') + '.'));
   const cnt = d3.range(12).map(() => 0);
-  rows.forEach((r) => { cnt[new Date(r.t).getUTCMonth()]++; });
+  allR.forEach((r) => { cnt[new Date(r.t).getUTCMonth()]++; });
   const mx = Math.max.apply(null, cnt), cur = new Date(ref).getUTCMonth();
   const bars = h('div', 'zp-bars');
   cnt.forEach((c, i) => {
@@ -1249,6 +1256,16 @@ dash.draw('zpanel', (el) => {
     sec2.appendChild(grid);
     sec2.appendChild(h('p', 'zp-note', 'Weather as of ' + fMD(new Date(w.asof + 'T00:00:00Z')) + ' (reanalysis).' + (row && row.rain_10d_in !== null ? ' Next 10 days: ' + row.rain_10d_in.toFixed(1) + ' in of rain, highs ' + Math.round(row.hi_low_f) + ' to ' + Math.round(row.hi_high_f) + ' F.' : '') + (row && row.rain_era5_through ? ' The score uses ERA5 reanalysis rain through ' + fMD(new Date(row.rain_era5_through + 'T00:00:00Z')) + ' (the same source as the history) and forecast-service rain for the days after.' : '')));
   }
+  if (S.mode === 'live') {
+    if (!SLIVE) loadSLive();
+    const sl = SLIVE && SLIVE.zones ? SLIVE.zones[z.id] : null;
+    if (sl) {
+      const bits = [];
+      if (sl.soil_f !== null && sl.soil_f !== undefined) bits.push((sl.depth || '') + ' soil ' + Math.round(sl.soil_f) + ' F on ' + fMD(new Date(sl.soil_date + 'T00:00:00Z')));
+      if (sl.rain_7d_in !== null && sl.rain_7d_in !== undefined) bits.push(sl.rain_7d_in.toFixed(1) + ' in of rain in the last 7 days');
+      if (bits.length) sec2.appendChild(h('p', 'zp-note', 'Nearest public sensor: ' + sl.station + ' (' + sl.net + ', ' + (sl.kind || '').toLowerCase() + ', ' + sl.dist_km + ' km away at ' + fInt(sl.elev_ft) + ' ft): ' + bits.join('; ') + '. Measured, for context only: the score uses modeled soil temperature, which can differ by several degrees.'));
+    }
+  }
   el.appendChild(sec2);
   moreMeasures(el, z);
 
@@ -1339,7 +1356,7 @@ function loadReal() {
 }
 const RC_VERDICT = {
   king_fall: 'The clearest match',
-  chanterelle: 'Weak match',
+  chanterelle: 'Modest match',
   king_spring: 'Too few reports to tell',
   morel: 'No match shown (score covers forest morels only)'
 };
@@ -1361,6 +1378,21 @@ function rcBars(label, vals, color, fmt, note) {
   if (note) wrap.appendChild(h('span', 'rc-rn', note));
   return wrap;
 }
+/* Nightly readings from the nearest public soil/rain sensor per zone (c/sensors_live.json) and per-species tracking (c/metrics.json). */
+let SLIVE = null, sliveReq = null, METR = null, metrReq = null;
+function loadSLive() {
+  if (sliveReq) return sliveReq;
+  sliveReq = fetch('data/c/sensors_live.json').then((r) => (r.ok ? r.json() : null)).then((d) => { SLIVE = d || { zones: {} }; if (S.zone) redraw(['zpanel']); return SLIVE; })
+    .catch(() => { SLIVE = { zones: {} }; return SLIVE; });
+  return sliveReq;
+}
+function loadMetr() {
+  if (metrReq) return metrReq;
+  metrReq = fetch('data/c/metrics.json').then((r) => (r.ok ? r.json() : null)).then((d) => { METR = d || { species: {} }; redraw(['reality']); return METR; })
+    .catch(() => { METR = { species: {} }; return METR; });
+  return metrReq;
+}
+
 /* Measured soil temperature (SNOTEL and AgriMet) by station, weekly means next to the model's matching layer. */
 let SENS = null;
 let sensReq = null;
@@ -1474,11 +1506,13 @@ dash.draw('reality', (el) => {
   el.appendChild(tabs);
 
   const rows = SIGHT.rows.filter((r) => r.sp === key);
-  const years = rows.map((r) => r.y);
+  const blurAll = SIGHT.blur.filter((r) => r.sp === key);
+  const allR = rows.concat(blurAll);
+  const years = allR.map((r) => r.y);
   const open = rows.filter((r) => OPEN_LAND[r.land]).length;
   const kp = h('div', 'rc-kpis');
-  [[fInt(rows.length), 'public reports of ' + nm.toLowerCase() + 's', Math.min.apply(null, years) + ' to ' + Math.max.apply(null, years)],
-   [fPct(open / Math.max(1, rows.length)), 'on land usually open to picking', 'national forest, BLM, state'],
+  [[fInt(allR.length), 'public reports of ' + nm.toLowerCase() + 's', Math.min.apply(null, years) + ' to ' + Math.max.apply(null, years) + (blurAll.length ? '; ' + fInt(blurAll.length) + ' with blurred locations (counted, not mapped)' : '')],
+   [fPct(open / Math.max(1, rows.length)), 'on land usually open to picking', 'national forest, BLM, state (mapped reports)'],
    [fPct(rows.filter((r) => r.land === 'p').length / Math.max(1, rows.length)), 'on private or unmapped land', 'about where people photograph, not pick']].forEach((k) => {
     const d = h('div', 'rc-kpi');
     d.appendChild(h('b', null, k[0]));
@@ -1488,11 +1522,37 @@ dash.draw('reality', (el) => {
   });
   el.appendChild(kp);
 
+  /* 0. tracking table: all mushrooms, model timing against public reports (c/metrics.json, refreshed with every build) */
+  if (!METR) loadMetr();
+  if (METR && METR.species) {
+    const sec0 = h('div', 'rc-sec');
+    sec0.appendChild(h('h3', null, 'Season timing: model against public reports, all mushrooms'));
+    const tb = h('table', 'rc-tab');
+    const hr = h('tr');
+    ['Mushroom', 'Model prime days (early / middle / late)', 'Public reports (early / middle / late)', 'Now in season / prime', 'Reports, last 30 days'].forEach((t) => hr.appendChild(h('th', null, t)));
+    tb.appendChild(hr);
+    const dd = (x) => (x ? doyStr(x) : '-');
+    [['morel', 'morel_natural'], ['king_spring', 'king_spring'], ['chanterelle', 'chanterelle'], ['king_fall', 'king_fall']].forEach((p) => {
+      const m = METR.species[p[1]];
+      if (!m) return;
+      const tr = h('tr');
+      tr.appendChild(h('td', null, FAM[p[0]].short));
+      tr.appendChild(h('td', null, m.model_prime_doy.map(dd).join(' / ')));
+      tr.appendChild(h('td', null, m.reports_doy.map(dd).join(' / ') + ' (' + fInt(m.reports_n) + ')'));
+      tr.appendChild(h('td', null, m.zones_in_season_now + ' / ' + m.zones_prime_now));
+      tr.appendChild(h('td', null, String(m.reports_last_30d)));
+      tb.appendChild(tr);
+    });
+    sec0.appendChild(tb);
+    sec0.appendChild(h('p', 'zp-note', 'Early, middle and late are the 10th, 50th and 90th percentile dates of prime days (score 60+) in ' + METR.years + ', and of public reports in the same years. Reports are shaped by when people go out, so expect them to bunch on fall weekends; large gaps in the late date point to a season that runs too long or too short. Refreshed with every build; public reports reach GBIF one to two weeks late.'));
+    el.appendChild(sec0);
+  }
+
   /* 1. timing: reports by week vs zones typically in prime */
   const sec1 = h('div', 'rc-sec');
   sec1.appendChild(h('h3', null, 'Does the timing line up?'));
   const wk = d3.range(53).map(() => 0);
-  rows.forEach((r) => { wk[Math.min(52, Math.floor((r.doy - 1) / 7))]++; });
+  allR.forEach((r) => { wk[Math.min(52, Math.floor((r.doy - 1) / 7))]++; });
   const wb = calcRows('weekly_busy');
   const model53 = d3.range(53).map(() => 0);
   (wb || []).filter((r) => r.family === fam).forEach((r) => { model53[r.week - 1] = r.avg_zones; });
@@ -1516,7 +1576,7 @@ dash.draw('reality', (el) => {
   sec1.appendChild(ax);
   const half = (a, mx) => a.findIndex((x) => x >= 0.5 * mx);
   const inSeason = wk.reduce((a, v, i) => a + (model53[i] >= 0.25 * mxm ? v : 0), 0);
-  sec1.appendChild(h('p', 'zp-note', 'Bars: reports per week of the year, all years. Dots: how many zones are typically in prime that week. Each is scaled to its own peak, so this compares timing, not height. Reports climb past half their peak in the week of ' + doyStr(half(wk, mxw) * 7 + 1) + ' and the model passes half its peak in the week of ' + doyStr(half(model53, mxm) * 7 + 1) + '. ' + fPct(inSeason / Math.max(1, rows.length)) + ' of reports fall in weeks where the model has at least a quarter of its peak number of zones in prime.'));
+  sec1.appendChild(h('p', 'zp-note', 'Bars: reports per week of the year, all years. Dots: how many zones are typically in prime that week. Each is scaled to its own peak, so this compares timing, not height. Reports climb past half their peak in the week of ' + doyStr(half(wk, mxw) * 7 + 1) + ' and the model passes half its peak in the week of ' + doyStr(half(model53, mxm) * 7 + 1) + '. ' + fPct(inSeason / Math.max(1, allR.length)) + ' of reports fall in weeks where the model has at least a quarter of its peak number of zones in prime.'));
   el.appendChild(sec1);
 
   /* 2. how well the scores match reports */

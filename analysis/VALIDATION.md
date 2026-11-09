@@ -82,3 +82,29 @@ Files: `analysis/` (val2_fetch.py effort data, val2.py tests, val2m.py morel spl
 ## Live rain input vs gauges (2026-11-09)
 
 Live scores (and the forecast-day bars) take the last 31 days of rain from the forecast service's "past days", while the 10-year history uses ERA5. Against AgriMet rain gauges for Oct 20-31 2026: Bandon gauge 1.55 in, forecast past days 0.06, ERA5 1.08; Brookings 1.58 / 2.34 / 1.37; Corvallis 0.75 / 0.46 / 1.48; Medford 0.52 / 0.40 / 0.75 (Aurora gauge data invalid). Mean absolute miss: forecast past days 0.67 in, ERA5 0.41 in (4 gauges, one 12-day window). Effect: on Nov 8 several coastal and foothill chanterelle scores read 42 live versus 93 to 100 in the history six days earlier, mainly because the forecast service saw almost none of the Oct 25-27 coastal rain. Changed 2026-11-09 (owner's decision): live and forecast-day scores now take past-day rain from ERA5 in the database wherever it exists (about 5 days behind) and the forecast service only for the newest days, plus the fall season-opener rain since Aug 1 from the database. After the switch, live scores on Nov 8 matched the history's last day within 15 points for 22 of 33 zone-mushroom pairs (14 of 33 before), for example Reedsport chanterelle 100 (was 42; history 100). The site's live scores can now differ from what the unmodified skill (and the daily alert script, which calls the skill directly) report for the same zone.
+
+## Review of 2026-11-09: species against public knowledge, antecedent weather, data gaps
+
+**Timing, model prime days vs public reports (10th / 50th / 90th percentile, 2016-2025; reports now include blurred-location records):**
+
+| Species | Model prime days | Public reports | Published guidance |
+|---|---|---|---|
+| Natural morel | Apr 1 / May 11 / Jun 17 | Apr 3 / Apr 28 / May 30 | mid-April to early June, moving uphill with snowmelt; soil about 50 to 60 F at 2 to 4 in |
+| Spring king | May 13 / Jun 9 / Jul 8 | May 17 / Jun 7 / Jun 30 | late spring after snowmelt, mid elevations |
+| Chanterelle | Sep 27 / Oct 29 / Dec 2 | Aug 17 / Oct 17 / Nov 28 | mid-summer at higher elevations to first frost, usually through November; triggered by fall rains |
+| Fall king | Sep 25 / Oct 30 / Dec 12 | Sep 2 / Oct 16 / Nov 12 | fall, September to November, coastal pine and spruce |
+
+The live tracking of this table is on the Stats tab (c/metrics.json, rebuilt with every build).
+
+**Antecedent weather (does the score look back far enough?).** The scorer already looks back: 7-day soil temperature, 7/14/30-day rain, days since the last rain event, days since snowmelt, days since the fall season opener (Aug 1 onward), frost in the last 3 and 5 nights, and a 14-day dry-gap penalty. `analysis/antecedent_check.py` compared longer windows on effort days (top vs bottom third within each zone): for chanterelles and fall kings, rain over the last 7 to 14 days goes with more reports (1.2 to 1.4x) while 60 to 90-day and since-August rain go with fewer (0.5 to 0.7x, because they mark the late season). The clearest antecedent signal was frost: no chanterelle reports on in-season days with a frost night in the previous 14 days (0 of 63 such days vs 9 of 150 frost-free days).
+
+**Model changes tested (analysis/run_variant_test.py; control reproduced production exactly):**
+- Adopted: chanterelle season opener at 1.0 in of rain in 7 days (was 1.5), a 14-day frost memory (any 28 F night halves the score) and the short-term frost penalty now applying to 1 or more nights (it fired only at exactly 1). Chanterelle effort-controlled ratio 1.15 to 1.44 (40 km, 0.89-1.59 to 1.09-2.01); with blurred records 1.33 (1.07-1.80) and 1.48 at 70 km; year-swap 52 to 54 (interval 50.8 to 57.6, the first sign of a year-specific signal). Fall-king and other species unchanged.
+- Rejected: fall king coastal season ending in November (timing matched reports better, P90 Dec 13 to Nov 20, but the ratio fell from 3.2 to 2.7) and an August start for inland chanterelles (the ratio rose, but 66 of 67 August find-days still scored below 60, so the gain was mechanical: the score cannot see summer flushes, which need a different trigger). Both remain visible gaps in the timing table.
+
+**Data gaps closed:**
+- Blurred-location records: about half of all public mushroom records have locations blurred by their observers (2 to 30 km). They were dropped; they are now kept for zone counts, timing, tracking and validation (never mapped or land-tagged): 1,094 added to 1,621 mappable records.
+- Measured soil temperature and rain: the nearest SNOTEL or AgriMet station (within 45 km and 2,000 ft) is now read nightly and shown in the zone panel for context (15 of 32 zones).
+- Fixed along the way: the Stats card did not draw when opening the Stats tab from the map; the AI brief was dated in UTC.
+
+**Free services checked and not added:** iNaturalist API directly (blocked for the server's IP; GBIF republishes research-grade records 1 to 2 weeks later), Mushroom Observer API (already in GBIF), NWS forecast API (no soil data; Open-Meteo covers it), NRCS SCAN (no west-side Oregon stations), NASA SMAP soil moisture (9 km cells), PRISM (overlaps ERA5), MTBS burn severity (11% of upland morel finds were in recent burns), USFS closure orders (no machine-readable feed).
