@@ -1,0 +1,57 @@
+{
+  "version": "1.0",
+  "units": {"soil_temp": "F", "precip": "inch", "soil_moisture": "m3/m3"},
+  "species": {
+    "morel_natural": {
+      "display": "Morels (natural)",
+      "months": [3, 4, 5, 6, 7],
+      "elev_bands_ft": {"3": [500, 2500], "4": [1000, 3500], "5": [3000, 4800], "6": [4200, 6000], "7": [5500, 6500]},
+      "southern_shift_weeks": -1.5,
+      "soil_temp_tri": [41, 48, 56, 63],
+      "moisture": {"precip_30d_ramp": [0.6, 2.0], "soil_moisture_ramp": [0.10, 0.20], "combine": "max"},
+      "trigger": {"type": "days_since_meltout", "tri": [5, 10, 24, 35], "fallback": {"type": "days_since_rain_event", "event_in": 0.5, "tri": [3, 7, 18, 28]}},
+      "penalties": {"frost_28F_last3d": 0.5, "soil_7d_mean_above": [62, 0.3]},
+      "weights": {"soil_temp": 0.40, "moisture": 0.35, "trigger": 0.25}
+    },
+    "morel_burn": {
+      "display": "Morels (burn)",
+      "inherits": "morel_natural",
+      "fire_join": {"years_back": 1, "min_acres": 500, "centroid_elev_ft": [2000, 6500], "second_year_factor": 0.5, "zone_bonus": 1.25},
+      "trigger": {"type": "days_since_meltout", "tri": [10, 21, 42, 60], "fallback": {"type": "days_since_rain_event", "event_in": 0.5, "tri": [3, 7, 21, 35]}}
+    },
+    "chanterelle": {
+      "display": "Pacific golden chanterelle",
+      "months_coastal": [8, 9, 10, 11, 12],
+      "months_interior": [9, 10, 11],
+      "elev_bands_ft": {"all": [0, 4000]},
+      "soil_temp_tri": [40, 45, 58, 65],
+      "moisture": {"precip_14d_ramp": [0.5, 1.5], "combine": "solo"},
+      "trigger": {"type": "days_since_season_opener", "opener_rule": {"after_month_day": "08-01", "rolling_7d_precip_in": 1.5}, "tri": [10, 20, 70, 100], "no_opener_score": 0},
+      "penalties": {"hard_freeze_3n_27F": 0.0, "single_frost_28F": 0.7, "dry_gap_21d": 0.6},
+      "weights": {"trigger": 0.35, "moisture": 0.30, "soil_temp": 0.25, "air": 0.10}
+    },
+    "king_spring": {
+      "display": "Spring king bolete",
+      "months": [5, 6, 7],
+      "elev_bands_ft": {"all": [3000, 6500]},
+      "side_allow": ["east", "crest"],
+      "soil_temp_tri": [44, 50, 60, 66],
+      "moisture": {"precip_30d_ramp": [0.8, 2.0], "soil_moisture_ramp": [0.12, 0.22], "combine": "max"},
+      "trigger": {"type": "days_since_meltout", "tri": [10, 14, 28, 50], "fallback": {"type": "days_since_rain_event", "event_in": 0.5, "tri": [5, 10, 21, 35]}},
+      "penalties": {"frost_28F_last3d": 0.6},
+      "weights": {"soil_temp": 0.35, "moisture": 0.35, "trigger": 0.30}
+    },
+    "king_fall": {
+      "display": "Fall king bolete",
+      "months_coastal": [9, 10, 11, 12],
+      "months_interior": [9, 10],
+      "elev_bands_ft": {"coastal": [0, 1500], "interior": [3500, 6000]},
+      "soil_temp_tri": [42, 45, 58, 64],
+      "moisture": {"precip_14d_ramp": [0.5, 1.5], "combine": "solo"},
+      "trigger": {"type": "days_since_rain_event", "event_in": 0.8, "tri": [7, 10, 21, 30]},
+      "penalties": {"hard_freeze_3n_27F": 0.0, "single_frost_28F": 0.7},
+      "weights": {"trigger": 0.35, "moisture": 0.30, "soil_temp": 0.25, "air": 0.10}
+    }
+  },
+  "score_labels": [[0, 19, "dead - do not burn the gas"], [20, 39, "marginal - only if you are already there"], [40, 59, "worth a look"], [60, 79, "good - conditions are aligned"], [80, 100, "go now"]]
+}

@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Western Oregon Mushroom Conditions</title>
+<meta name="description" content="Live heat map of modeled mushroom fruiting conditions across western Oregon, with a history-based outlook for the next two weeks, a 10-year time machine and season stats.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="dash-root">
+<div class="sh">
+
+  <header class="sh-head">
+    <div class="sh-brand">
+      <h1>Western Oregon mushroom conditions</h1>
+      <p class="sh-sub" data-draw="takeaway" data-source="zones live about">—</p>
+    </div>
+    <div class="sh-actions">
+      <a class="beer" href="https://www.paypal.com/donate/?hosted_button_id=NAWYL36KNZHGE" target="_blank" rel="noopener noreferrer">&#127866; Buy me a beer<span class="sr-only"> (opens PayPal in a new tab)</span></a>
+      <nav class="seg" role="tablist" aria-label="Pages">
+        <button type="button" role="tab" class="is-on" data-tab="map" aria-selected="true">Map</button>
+        <button type="button" role="tab" data-tab="stats" aria-selected="false">Stats</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ===================== MAP ===================== -->
+  <section id="map" aria-label="Map">
+    <div class="toolbar">
+      <div class="chips" role="group" aria-label="Mushroom">
+        <button type="button" class="chip is-on" data-sp="all">All</button>
+        <button type="button" class="chip" data-sp="morel_natural"><i class="chip-dot" style="background:#c4562b"></i>Morels</button>
+        <button type="button" class="chip" data-sp="chanterelle"><i class="chip-dot" style="background:#e4a40f"></i>Chanterelles</button>
+        <button type="button" class="chip" data-sp="king_spring"><i class="chip-dot" style="background:#3f9d5b"></i>Spring king</button>
+        <button type="button" class="chip" data-sp="king_fall"><i class="chip-dot" style="background:#3b73c8"></i>Fall king</button>
+      </div>
+      <div class="seg" role="group" aria-label="Date mode">
+        <button type="button" class="is-on" data-mode="live">Live now</button>
+        <button type="button" data-mode="time">Time machine</button>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div class="mapwrap" id="mapwrap">
+        <div class="map" data-draw="map" data-source="zones live weather history about geo places grid grid_hist">—</div>
+
+        <div class="mctl" role="group" aria-label="Map zoom">
+          <button type="button" id="zoom-in" class="icon-btn" aria-label="Zoom in">+</button>
+          <button type="button" id="zoom-out" class="icon-btn" aria-label="Zoom out">−</button>
+          <button type="button" id="zoom-reset" class="icon-btn" aria-label="Reset view">⟲</button>
+        </div>
+        <button type="button" id="layers-btn" class="pill" aria-expanded="false" aria-controls="layers">Layers and filters</button>
+
+        <div id="layers" class="pop" hidden>
+          <label class="fld">Map shows
+            <select id="metric" class="dash-select">
+              <option value="score">Score now (model)</option>
+              <option value="o7">Expected in about 7 days</option>
+              <option value="o14">Expected in about 14 days</option>
+              <option value="soil_t">Soil temperature</option>
+              <option value="soil_m">Soil moisture</option>
+              <option value="rh">Humidity (daily mean)</option>
+              <option value="vpd">Dryness of the air (vapor pressure deficit)</option>
+              <option value="rain14">Rain, last 14 days</option>
+              <option value="tmax">Air high</option>
+            </select>
+          </label>
+          <label class="chk"><input type="checkbox" id="opt-heat" checked> Heat map (regional estimate)</label>
+          <label class="chk"><input type="checkbox" id="opt-markers" checked> Zone markers</label>
+          <label class="chk"><input type="checkbox" id="opt-season"> Only zones in season</label>
+          <hr>
+          <label class="chk"><input type="checkbox" id="opt-landmap"> Land ownership (federal and state)</label>
+          <label class="chk"><input type="checkbox" id="opt-sight"> Past finds (public reports)</label>
+          <div id="sight-opts" class="subopts" hidden>
+            <label class="fld">Show finds from
+              <select id="sight-when" class="dash-select">
+                <option value="season">This time of year (3 weeks either side, any year)</option>
+                <option value="recent">The last 30 days</option>
+                <option value="all">All dates since 2010</option>
+              </select>
+            </label>
+            <label class="chk"><input type="checkbox" id="opt-sightpub"> Only on land open to picking (national forest, BLM, state)</label>
+          </div>
+          <hr>
+          <label class="fld">Area
+            <select id="region" class="dash-select">
+              <option value="all">All of Oregon</option>
+              <option value="pdx">Portland area (about 2 h drive or less)</option>
+              <option value="wv">Willamette Valley and west Cascades</option>
+              <option value="central">Central Oregon (east slope)</option>
+              <option value="south">Southern Cascades and Klamath</option>
+              <option value="sw">Southwest Oregon</option>
+              <option value="coast">Coast and Coast Range</option>
+            </select>
+          </label>
+          <label class="fld">Land manager
+            <select id="land" class="dash-select">
+              <option value="all">Any</option>
+              <option value="Mt. Hood NF">Mt. Hood NF</option>
+              <option value="Willamette NF">Willamette NF</option>
+              <option value="Deschutes NF">Deschutes NF</option>
+              <option value="Umpqua NF">Umpqua NF</option>
+              <option value="Fremont-Winema NF">Fremont-Winema NF</option>
+              <option value="Rogue River-Siskiyou NF">Rogue River-Siskiyou NF</option>
+              <option value="Siuslaw NF">Siuslaw NF</option>
+              <option value="BLM">BLM land</option>
+              <option value="State Forest">State forests (ODF)</option>
+            </select>
+          </label>
+          <label class="fld">Elevation
+            <select id="elev" class="dash-select">
+              <option value="any">Any</option>
+              <option value="low">Under 1,500 ft</option>
+              <option value="mid">1,500 to 3,500 ft</option>
+              <option value="high">Over 3,500 ft</option>
+            </select>
+          </label>
+          <label class="fld">Minimum score <b data-draw="minscore-read">any</b>
+            <input type="range" id="minscore" min="0" max="80" step="10" value="0">
+          </label>
+          <label class="fld">Find a zone
+            <input type="search" id="q" placeholder="Name" autocomplete="off">
+          </label>
+          <label class="fld">Sort the list by
+            <select id="sort" class="dash-select">
+              <option value="metric">Value shown, high to low</option>
+              <option value="name">Name</option>
+              <option value="pdx">Distance from Portland</option>
+            </select>
+          </label>
+          <button type="button" id="reset" class="btn sm">Reset filters</button>
+        </div>
+
+        <div class="legend" data-draw="legend">—</div>
+
+        <div class="keys">
+          <div id="land-key" class="key" hidden>
+            <b>Land</b>
+            <span><i style="background:#cceac5"></i>National forest</span>
+            <span><i style="background:#fee679"></i>BLM</span>
+            <span><i style="background:#b3e3ee"></i>State</span>
+            <span><i style="background:#8fb5be"></i>County / city</span>
+            <span><i style="background:#7fcca7"></i>Wildlife refuge</span>
+            <span><i style="background:#cabddc"></i>National park</span>
+            <span><i class="none"></i>No color: private or unmapped</span>
+          </div>
+          <div id="sight-note" class="key" hidden></div>
+        </div>
+
+        <div id="tm" class="tm" hidden>
+          <div class="tm-row">
+            <select class="dash-select" data-draw="tm-year" data-source="history" aria-label="Year"></select>
+            <button type="button" id="tm-play" class="btn sm" aria-pressed="false">Play</button>
+            <input type="range" id="tm-slider" min="1" max="366" value="1" aria-label="Day of year">
+          </div>
+          <div class="tm-read" data-draw="timeread" data-source="zones history grid_hist">—</div>
+        </div>
+
+        <aside id="zpanel" class="zpanel" data-draw="zpanel" data-source="zones live weather history about prime_by_week season_windows now_vs_typical" hidden aria-label="Zone details"></aside>
+      </div>
+
+      <aside class="side">
+        <details id="brief-card" class="brief" hidden open>
+          <summary>Tonight's brief</summary>
+          <div data-draw="brief" data-source="about">—</div>
+        </details>
+        <div data-draw="ranklist" data-source="zones live weather history">—</div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ===================== STATS ===================== -->
+  <section id="stats" hidden aria-label="Stats and charts">
+
+    <div class="kpis">
+      <div class="kpi">
+        <span class="kpi-l">Zones</span>
+        <b class="kpi-v" data-draw="kpi" data-source="kpis" data-row="0" data-field="zones" data-fmt="int">—</b>
+        <span class="kpi-s">foraging areas tracked</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-l">Zone and mushroom series</span>
+        <b class="kpi-v" data-draw="kpi" data-source="kpis" data-row="0" data-field="series_with_history" data-fmt="int">—</b>
+        <span class="kpi-s"><span data-draw="kpi" data-source="kpis" data-row="0" data-field="series_core" data-fmt="int">—</span> with the full record</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-l">Years of history</span>
+        <b class="kpi-v"><span data-draw="kpi" data-source="kpis" data-row="0" data-field="year_first">—</span>–<span data-draw="kpi" data-source="kpis" data-row="0" data-field="year_last">—</span></b>
+        <span class="kpi-s">modeled from weather</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-l">Best past year</span>
+        <b class="kpi-v" data-draw="kpi" data-source="kpis" data-row="0" data-field="best_year">—</b>
+        <span class="kpi-s"><span data-draw="kpi" data-source="kpis" data-row="0" data-field="best_year_days" data-fmt="int">—</span> prime zone-days</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-l">Busiest week</span>
+        <b class="kpi-v" data-draw="kpi" data-source="kpis" data-row="0" data-field="busy_week_doy" data-fmt="md">—</b>
+        <span class="kpi-s">about <span data-draw="kpi" data-source="kpis" data-row="0" data-field="busy_week_zones">—</span> zones in prime</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-l">In prime right now</span>
+        <b class="kpi-v" data-draw="kpi" data-source="kpis" data-row="0" data-field="prime_now" data-fmt="int">—</b>
+        <span class="kpi-s"><span data-draw="kpi" data-source="kpis" data-row="0" data-field="go_now" data-fmt="int">—</span> at go-now</span>
+      </div>
+    </div>
+
+    <div class="card" id="seasons-card">
+      <div class="card-h">
+        <div>
+          <h2>When is each zone on?</h2>
+          <p class="note">Each bar spans the median first and last day a zone reached prime conditions (score 60+). The thin line runs from the earliest start to the latest end in any year, and the white dot is the typical best day. Click a row to drill in.</p>
+        </div>
+        <div class="chips" role="group" aria-label="Mushroom type">
+          <button type="button" class="chip is-on" data-fam="all">All</button>
+          <button type="button" class="chip" data-fam="morel"><i class="chip-dot" style="background:#c4562b"></i>Morels</button>
+          <button type="button" class="chip" data-fam="king_spring"><i class="chip-dot" style="background:#3f9d5b"></i>Spring king</button>
+          <button type="button" class="chip" data-fam="chanterelle"><i class="chip-dot" style="background:#e4a40f"></i>Chanterelles</button>
+          <button type="button" class="chip" data-fam="king_fall"><i class="chip-dot" style="background:#3b73c8"></i>Fall king</button>
+        </div>
+      </div>
+      <div class="chart" data-draw="seasons" data-source="season_windows zones live history about">—</div>
+      <div class="card-f">
+        <button type="button" class="btn sm" id="seasons-more" aria-pressed="false">Include zones with a short record</button>
+        <span class="muted small">Zones marked * have only 3 complete years of history, so their windows are rougher.</span>
+      </div>
+    </div>
+
+    <div class="card" id="weekly-card">
+      <div class="card-h">
+        <div>
+          <h2>When is it on across Oregon?</h2>
+          <p class="note">For each week of the year, how many zones typically reach prime conditions, stacked by mushroom type. Tall columns are the weeks when the most places line up at once. Click a week to see which zones are most likely to be on.</p>
+        </div>
+      </div>
+      <div class="split">
+        <div class="chart" data-draw="weekly" data-source="weekly_busy">—</div>
+        <div class="lens" data-draw="weeklens" data-source="prime_by_week zones live history about">—</div>
+      </div>
+      <div class="key" aria-hidden="true">
+        <span><i class="chip-dot" style="background:#c4562b"></i>Morels</span>
+        <span><i class="chip-dot" style="background:#3f9d5b"></i>Spring king</span>
+        <span><i class="chip-dot" style="background:#e4a40f"></i>Chanterelles</span>
+        <span><i class="chip-dot" style="background:#3b73c8"></i>Fall king</span>
+      </div>
+    </div>
+
+    <div class="explorer" id="explorer">
+      <div class="ex-top">
+        <div>
+          <h2 class="ex-h">Drill into one zone</h2>
+          <p class="note">Pick a zone and mushroom, or click any row or dot above. Everything below follows your pick.</p>
+        </div>
+        <label class="fld inline">Zone and mushroom
+          <select class="dash-select" data-draw="series-select" data-source="zones live history about"></select>
+        </label>
+      </div>
+      <div data-draw="exhead" data-source="season_windows series_year now_vs_typical zones live history about">—</div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-h"><div>
+            <h3>How likely is prime, week by week?</h3>
+            <p class="note">The share of past years in which a day that week reached prime (60+). Solid line is prime, dashed is go-now (80+), the band is an 80% confidence range, which widens when there are few years.</p>
+          </div></div>
+          <div class="chart" data-draw="odds" data-source="prime_by_week zones live history about">—</div>
+        </div>
+        <div class="card">
+          <div class="card-h"><div>
+            <h3>Good years and bad years</h3>
+            <p class="note">Days per year at prime (light) and go-now (solid). The dashed line is the average of complete years. Click a bar to compare that year below.</p>
+          </div></div>
+          <div class="chart" data-draw="years" data-source="series_year zones live history about">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><div>
+          <h3>Season heat calendar</h3>
+          <p class="note">One row per year, one cell per week, colored by the best score that week. Look for the vertical stripe that repeats every year, that is the dependable window, and for the years that broke the pattern. Click a row to compare it.</p>
+        </div></div>
+        <div class="chart" data-draw="calendar" data-source="series_year zones live history about">—</div>
+        <div class="key" aria-hidden="true">
+          <span><i class="chip-dot" style="background:#7d8695"></i>Dead 0-19</span>
+          <span><i class="chip-dot" style="background:#b99d63"></i>Marginal 20-39</span>
+          <span><i class="chip-dot" style="background:#e0b535"></i>Worth a look 40-59</span>
+          <span><i class="chip-dot" style="background:#7bc05a"></i>Good 60-79</span>
+          <span><i class="chip-dot" style="background:#1e9e5f"></i>Go now 80-100</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><div>
+          <h3 data-draw="yeartrace-title">—</h3>
+          <p class="note">The colored line is the selected year, day by day. The gray band is the full range of the other complete years and the dashed line is their median. Shaded zones mark prime (60+) and go-now (80+).</p>
+        </div></div>
+        <div class="chart" data-draw="yeartrace" data-source="series_year zones live history about">—</div>
+      </div>
+    </div>
+
+    <div class="card" id="elev-card">
+      <div class="card-h"><div>
+        <h2>Does elevation set the calendar?</h2>
+        <p class="note">Each dot is a zone and mushroom: how high it sits against the typical best day of its season. Dashed lines are a fitted trend per mushroom type, a steeper climb means the season arrives later as you go up.</p>
+      </div></div>
+      <div class="fits" data-draw="elev-fit" data-source="timing_fit">—</div>
+      <div class="chart" data-draw="elev" data-source="season_windows timing_fit zones live history about">—</div>
+    </div>
+
+    <div class="card" id="reality-card">
+      <div class="card-h"><div>
+        <h2>Scores against real reports</h2>
+        <p class="note">How the model compares with what people actually reported (public iNaturalist, Mushroom Observer and similar records through GBIF) and with measured soil temperature. These checks are rough and the samples are modest: the <a href="sources.html#checks">sources page</a> has the method and limits.</p>
+      </div></div>
+      <div class="reality" data-draw="reality" data-source="weekly_busy zones live history about">—</div>
+    </div>
+
+    <details class="card notes">
+      <summary>How these numbers are made</summary>
+      <dl>
+        <dt>Score</dt>
+        <dd>A 0 to 100 estimate of how aligned the weather is for a mushroom to fruit in a zone: soil temperature, recent rain, season timing and more. It estimates conditions, not what is in your basket.</dd>
+        <dt>Prime and go-now</dt>
+        <dd>Prime is a score of 60 or more. Go-now is 80 or more.</dd>
+        <dt>History</dt>
+        <dd>Past years are a reconstruction from weather reanalysis scored with the same model, not observed mushrooms. Live scores use a forecast model whose soil temperature differs slightly, so compare today with history loosely.</dd>
+        <dt>Scores against real reports</dt>
+        <dd>Public reports (iNaturalist, Mushroom Observer and similar, through GBIF) compared with the model: the timing of reports against the season curve, how often a mushroom is reported on high-score days, where reports come from by elevation and forest type, and how the weather history's soil temperature compares with measured soil temperature. Rough checks on modest samples; <a href="sources.html#checks">details and limits</a>.</dd>
+        <dt>Next 7 days and best days</dt>
+        <dd>The same model, run each morning on the weather forecast (soil temperature and moisture, rain, frost) instead of past weather. Today's bar matches today's score. Forecasts change, so treat later days as a guide and look again before you go.</dd>
+        <dt>Checked against finds</dt>
+        <dd>We compare the scores with public reports of each mushroom. The match is clearest for fall king boletes, weak for chanterelles and spring kings, and not shown for natural morels (whose score covers forest morels only). <a href="sources.html#checks">Details and limits</a>.</dd>
+        <dt>Season window</dt>
+        <dd>The median first and last day a zone reached prime across complete years. At least 3 prime seasons are needed.</dd>
+        <dt>Odds by week</dt>
+        <dd>The share of complete years in which any day in a 7-day week reached prime. The band is an 80% Wilson interval, which stays honest with few years.</dd>
+        <dt>Elevation trend</dt>
+        <dd>A least-squares line of the typical best day on zone elevation. The r2 figure says how much of the spread elevation explains.</dd>
+        <dt>Totals across zones</dt>
+        <dd>Yearly totals use only the zones with the full record so years compare fairly. Newer zones with 3 years of history appear in the zone views, marked as a short record.</dd>
+        <dt>Not covered</dt>
+        <dd>Burn scars, permits and what has actually been reported on the ground. Check permit rules for the land unit before you pick.</dd>
+      </dl>
+    </details>
+  </section>
+
+  <footer class="sh-foot">
+    <p class="warn"><b>Never eat any wild mushroom you have not positively identified yourself.</b> Scores predict fruiting conditions, not what is actually in your basket. When in doubt, throw it out, or run finds past the Cascade Mycological Society (Eugene) or Central Oregon Mushroom Club (Bend). Check permit rules for the land unit before picking.</p>
+    <p class="muted small" data-draw="footnote" data-source="about">—</p>
+    <p class="made muted small">A product of <a href="https://yeylandwutani.com/" target="_blank" rel="noopener noreferrer">Yeyland Wutani LLC</a>, built with the assistance of <a href="https://www.anthropic.com/claude" target="_blank" rel="noopener noreferrer">Claude</a>. Free, no ads, no tracking: if it helped you find mushrooms, <a href="https://www.paypal.com/donate/?hosted_button_id=NAWYL36KNZHGE" target="_blank" rel="noopener noreferrer">buy me a beer</a>.</p>
+  </footer>
+</div>
+</div>
+<noscript><p style="padding:1rem">This map needs JavaScript. Without it, the rules still apply: identify every mushroom with certainty before eating it, and check permit rules for the land unit.</p></noscript>
+<script src="vendor/d3/d3.min.js"></script>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="dash.js"></script>
+</body>
+</html>

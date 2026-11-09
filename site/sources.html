@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data sources and credits - Western Oregon Mushroom Conditions</title>
+<meta name="description" content="Where the data behind Western Oregon Mushroom Conditions comes from: all public sources, with licenses and credits.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="theme.css">
+<style>
+  body { margin: 0; background: var(--color-bg); color: var(--color-fg); font: 15px/1.55 var(--font-anthropic-sans); }
+  main { max-width: 860px; margin: 0 auto; padding: 24px 18px 48px; }
+  a { color: inherit; text-underline-offset: 2px; }
+  h1 { font-size: 1.6rem; margin: 6px 0 4px; }
+  h2 { font-size: 1.05rem; margin: 28px 0 8px; padding-top: 14px; border-top: 1px solid var(--color-border-line); }
+  p { margin: 8px 0; }
+  .lead { color: var(--color-fg-muted); }
+  .back { font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 10px 9px 0; border-bottom: 1px solid var(--color-border-line); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--color-fg-muted); font-weight: 600; }
+  td:first-child { font-weight: 600; width: 22%; }
+  .note { font-size: 13px; color: var(--color-fg-muted); }
+  @media (max-width: 640px) { table, thead, tbody, tr, th, td { display: block; } thead { display: none; } tr { padding: 10px 0; border-bottom: 1px solid var(--color-border-line); } td { border: 0; padding: 2px 0; } td:first-child { width: auto; } }
+</style>
+</head>
+<body>
+<main>
+  <p class="back"><a href="./">&larr; Back to the map</a></p>
+  <h1>Data sources and credits</h1>
+  <p class="lead">Everything on this site is built from public data. Nothing here is private or scraped from a members-only site, and the site has no accounts, no ads and no analytics or tracking scripts. Below is where each piece comes from and under what terms.</p>
+
+  <h2>Weather, soil and snow</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Source</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td>Weather history 2016 to now</td><td><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a> archive API, serving ERA5-Land reanalysis from the Copernicus Climate Change Service (C3S) and ECMWF. Licensed <a href="https://open-meteo.com/en/license" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Contains modified Copernicus Climate Change Service information.</td><td>The 10-year history, the time machine, the outlook and the season statistics (temperature, rain, soil temperature and moisture, humidity).</td></tr>
+      <tr><td>Recent days and live conditions</td><td><a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo.com</a> forecast API (national weather model data, including NOAA), on a commercial plan. Rain for past days comes from the same ERA5-Land reanalysis as the history wherever it exists (about five days behind); the forecast service fills in the most recent days.</td><td>Today's score, the next-7-days bars, the latest conditions and the 10-day rain and temperature outlook.</td></tr>
+      <tr><td>Snowpack</td><td><a href="https://wcc.sc.egov.usda.gov/" target="_blank" rel="noopener noreferrer">USDA NRCS SNOTEL</a> snow-monitoring network (public domain).</td><td>When snow has melted out at higher elevations in spring.</td></tr>
+      <tr><td>Wildfire perimeters</td><td><a href="https://data-nifc.opendata.arcgis.com/" target="_blank" rel="noopener noreferrer">NIFC Open Data</a> (WFIGS, interagency wildfire perimeters, public).</td><td>Burn-morel bonus after recent fires.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Past finds and land</h2>
+  <table>
+    <thead><tr><th>Data</th><th>Source</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td>Past finds</td><td>Public observation records from <a href="https://www.gbif.org/" target="_blank" rel="noopener noreferrer">GBIF</a>, which republishes <a href="https://www.inaturalist.org/" target="_blank" rel="noopener noreferrer">iNaturalist</a> research-grade observations, <a href="https://mushroomobserver.org/" target="_blank" rel="noopener noreferrer">Mushroom Observer</a> records and a few smaller datasets. Each record is shared by its observer under a Creative Commons license (CC0, CC BY or CC BY-NC); the map stores only date, species and approximate location, and every dot links to its record. Records appear about one to two weeks after they are posted. When you open a dot, your browser fetches that record's details from GBIF and, if it has one, the observer's photo from iNaturalist's open-data bucket, shown with the observer's credit and license (nothing is loaded from either until you open a dot, and the photo is sent without a referrer; like any website, they see your IP address).</td><td>The Past finds layer and the "Past finds nearby" panel.</td></tr>
+      <tr><td>Land ownership map</td><td><a href="https://gis.blm.gov/" target="_blank" rel="noopener noreferrer">Bureau of Land Management</a> Surface Management Agency map tiles (public domain).</td><td>The Land ownership overlay.</td></tr>
+      <tr><td>Land type of each find</td><td><a href="https://www.usgs.gov/programs/gap-analysis-project/science/pad-us-data-overview" target="_blank" rel="noopener noreferrer">USGS PAD-US</a>, the Protected Areas Database of the United States (public domain).</td><td>Sorting finds into national forest, BLM, state, restricted and private or unmapped land.</td></tr>
+      <tr><td>Forest structure</td><td><a href="https://landfire.gov/" target="_blank" rel="noopener noreferrer">LANDFIRE 2024</a> (U.S. Geological Survey and U.S. Forest Service, public domain): succession class, vegetation height and cover at 30 m resolution, sampled on a grid around each zone and at each past find.</td><td>The "Forest around this zone" section and its habitat-fit label. Mapped estimates; they do not show logging or fire since 2024.</td></tr>
+      <tr><td>Permit rules</td><td><a href="https://www.fs.usda.gov/" target="_blank" rel="noopener noreferrer">U.S. Forest Service</a> national forest pages and a compiled list of agency rules, last checked as shown in each zone.</td><td>The permit text in each zone panel. Rules change: always confirm with the land manager.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Add your own finds</h2>
+  <p>The past finds on the map come from people reporting on two public sites. If you find something, reporting it there helps everyone (including this map), and it stays yours: you choose the license and what location you share.</p>
+  <table>
+    <thead><tr><th>Where</th><th>How</th><th>Good to know</th></tr></thead>
+    <tbody>
+      <tr><td><a href="https://www.inaturalist.org/observations/upload" target="_blank" rel="noopener noreferrer">iNaturalist</a></td><td>Free account, website or phone app. Upload a photo (date and location are usually read from it), and the community suggests or confirms the species.</td><td>This is where most of the map's finds come from. Only records marked research grade with a Creative Commons license are republished to GBIF.</td></tr>
+      <tr><td><a href="https://mushroomobserver.org/observations/new" target="_blank" rel="noopener noreferrer">Mushroom Observer</a></td><td>Free account. Create an observation, then add your photos from its page; other members suggest names. See <a href="https://mushroomobserver.org/info/how_to_use" target="_blank" rel="noopener noreferrer">how to use it</a>.</td><td>A smaller share of the map's finds. Records are republished to GBIF under a Creative Commons license.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">A report appears on this map about one to two weeks after you post it, and only if it has a public location that is reasonably exact. If you hide or blur the location (to protect a favorite spot, for example), it is left off this map, and that is entirely fine. Posting a mushroom you have not identified is welcome on both sites: that is what the community identification is for.</p>
+
+  <h2>Map and software</h2>
+  <table>
+    <thead><tr><th>Item</th><th>Source</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td>Base map</td><td><a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener noreferrer">USGS The National Map</a>, US Topo tiles (public domain).</td><td>The topographic map under everything.</td></tr>
+      <tr><td>Map and chart code</td><td><a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> (BSD-2) and <a href="https://d3js.org/" target="_blank" rel="noopener noreferrer">D3</a> (ISC), both served from this site.</td><td>Drawing the map, heat layer and charts.</td></tr>
+      <tr><td>Daily summary</td><td>Written each night by Google's Gemini model from the public numbers above; it can be wrong.</td><td>The "Tonight's brief" text.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How the scores are made</h2>
+  <p>Scores come from a fruiting-conditions model (soil temperature, moisture, recent rain, frost and season windows for morels, chanterelles and king boletes) run on the weather data above. They estimate conditions, not what is in a basket (see the check against real finds below). This site does not copy any mushroom-hunting forum, map or app, and it does not publish anyone's private spots.</p>
+
+  <h2 id="checks">How well do the scores match real finds?</h2>
+  <p>We checked the scores against the public finds on this map (2016 to 2025), counting only days when other mushrooms were being reported nearby so that days with more people out looking did not look better by themselves. The sample is modest, 54 to 377 find-days per mushroom, so treat this as a rough read, not a guarantee. An earlier, smaller check looked better for chanterelles than this larger one does; this is the one to trust.</p>
+  <table>
+    <thead><tr><th>Mushroom</th><th>What we found</th></tr></thead>
+    <tbody>
+      <tr><td>Chanterelles</td><td>At best a weak match. Reports were about 1.1 to 1.4 times as frequent on prime days (score 60 or more) as on low-score days, and in most of our checks that is within the range of chance.</td></tr>
+      <tr><td>Fall king boletes</td><td>The clearest match: reported about two to three times as often on prime days in most of our checks, from nine zones with enough reports.</td></tr>
+      <tr><td>Spring king boletes</td><td>Leans the right way, but too few reports to tell it apart from chance.</td></tr>
+      <tr><td>Natural morels</td><td>No skill shown. The score covers forest morels at foothill and mountain elevations. More than half of morel reports come from valley floors below about 1,000 feet (parks, yards and orchards), which the score does not cover, so the check is not yet a fair test of the forest scoring.</td></tr>
+    </tbody>
+  </table>
+  <p>We found no evidence yet that the scores separate better years from worse years on the same date, and only weak evidence (except for fall kings) that they separate better days from worse days within a season. A modest effect could still be hiding in a sample this size. We repeat the check as more finds and zone history arrive.</p>
+
+  <p class="note">These sources are not affiliated with, and do not endorse, this site. A product of <a href="https://yeylandwutani.com/" target="_blank" rel="noopener noreferrer">Yeyland Wutani LLC</a>, built with the assistance of <a href="https://www.anthropic.com/claude" target="_blank" rel="noopener noreferrer">Claude</a>. Never eat a wild mushroom you have not positively identified yourself.</p>
+</main>
+</body>
+</html>

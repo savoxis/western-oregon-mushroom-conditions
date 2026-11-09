@@ -1,0 +1,486 @@
+{
+ "_comment": "Extra zones for shrooms.strong.beer (the oregon-mushroom-scout skill's own zones.json is untouched). Centers are general areas, not spots. Sighting counts are GBIF/iNaturalist research-grade records within 40 km, Oregon only, surveyed 2026-11-07. pdx_drive_h is an approximate drive time from downtown Portland.",
+ "zones": [
+  {
+   "id": "mthood_west",
+   "name": "Mt. Hood west side / Zigzag / Welches / Hwy 26",
+   "lat": 45.33,
+   "lon": -121.95,
+   "elev_ft": 1800,
+   "land": "Mt. Hood NF (Zigzag RD)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle",
+    "morel_natural"
+   ],
+   "habitat": "Doug-fir / western hemlock second growth on the lower west slope of Mt. Hood, chanterelles in moss and salal under mature stands; low-elevation morels in April",
+   "pdx_drive_h": 1.25,
+   "regions": [
+    "pdx",
+    "wv"
+   ],
+   "sightings": {
+    "chanterelle": 165,
+    "morel": 65,
+    "king": 130
+   }
+  },
+  {
+   "id": "mthood_east",
+   "name": "Mt. Hood east side / Hwy 35 / Parkdale / Cooper Spur",
+   "lat": 45.45,
+   "lon": -121.6,
+   "elev_ft": 3000,
+   "land": "Mt. Hood NF (Hood River RD)",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "king_spring",
+    "chanterelle"
+   ],
+   "habitat": "mixed fir / pine on the drier east slope, spring morels and kings as the snow line retreats, chanterelles in the lower fall stands",
+   "pdx_drive_h": 1.5,
+   "regions": [
+    "pdx"
+   ],
+   "sightings": {
+    "chanterelle": 112,
+    "morel": 56,
+    "king": 134
+   }
+  },
+  {
+   "id": "clackamas_river",
+   "name": "Clackamas River / Estacada / Ripplebrook",
+   "lat": 45.15,
+   "lon": -122.12,
+   "elev_ft": 1500,
+   "land": "Mt. Hood NF (Clackamas River RD)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle",
+    "morel_natural"
+   ],
+   "habitat": "Doug-fir / hemlock second growth along the Clackamas corridor, classic westside chanterelle ground",
+   "pdx_drive_h": 1.25,
+   "regions": [
+    "pdx",
+    "wv"
+   ],
+   "sightings": {
+    "chanterelle": 125,
+    "morel": 32,
+    "king": 86
+   }
+  },
+  {
+   "id": "santiam_detroit",
+   "name": "North Santiam / Detroit / Hwy 22",
+   "lat": 44.73,
+   "lon": -122.15,
+   "elev_ft": 1600,
+   "land": "Willamette NF (Detroit RD)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle",
+    "morel_natural"
+   ],
+   "habitat": "Doug-fir / hemlock forest around Detroit Lake and the North Santiam, fall chanterelles in older second growth",
+   "pdx_drive_h": 1.75,
+   "regions": [
+    "pdx",
+    "wv"
+   ],
+   "sightings": {
+    "chanterelle": 100,
+    "morel": 14,
+    "king": 17
+   }
+  },
+  {
+   "id": "tillamook_forest",
+   "name": "Tillamook State Forest / Wilson River Hwy 6",
+   "lat": 45.54,
+   "lon": -123.6,
+   "elev_ft": 1000,
+   "land": "Tillamook State Forest (ODF)",
+   "side": "coast",
+   "coastal": true,
+   "species": [
+    "chanterelle",
+    "king_fall"
+   ],
+   "habitat": "Coast Range hemlock / Sitka spruce and Doug-fir plantations, wet and cool, long chanterelle season into December",
+   "pdx_drive_h": 1.0,
+   "regions": [
+    "pdx",
+    "coast"
+   ],
+   "sightings": {
+    "chanterelle": 114,
+    "morel": 4,
+    "king": 45
+   }
+  },
+  {
+   "id": "clatsop_nehalem",
+   "name": "Clatsop State Forest / Nehalem / Hwy 26 west",
+   "lat": 45.95,
+   "lon": -123.6,
+   "elev_ft": 600,
+   "land": "Clatsop State Forest (ODF)",
+   "side": "coast",
+   "coastal": true,
+   "species": [
+    "chanterelle",
+    "king_fall"
+   ],
+   "habitat": "Northern Coast Range spruce / hemlock, heavy rain and mild winters, chanterelles to year end",
+   "pdx_drive_h": 1.5,
+   "regions": [
+    "pdx",
+    "coast"
+   ],
+   "sightings": {
+    "chanterelle": 129,
+    "morel": 3,
+    "king": 73
+   }
+  },
+  {
+   "id": "siuslaw_hebo",
+   "name": "Hebo / Cascade Head / Hwy 22 west",
+   "lat": 45.2,
+   "lon": -123.75,
+   "elev_ft": 800,
+   "land": "Siuslaw NF (Hebo RD)",
+   "side": "coast",
+   "coastal": true,
+   "species": [
+    "chanterelle",
+    "king_fall"
+   ],
+   "habitat": "Coast Range Sitka spruce / hemlock; Cascade Head and other scenic or research areas are closed to picking",
+   "pdx_drive_h": 1.75,
+   "regions": [
+    "pdx",
+    "coast"
+   ],
+   "sightings": {
+    "chanterelle": 41,
+    "morel": 1,
+    "king": 53
+   }
+  },
+  {
+   "id": "cottage_grove_row_river",
+   "name": "Cottage Grove / Row River / Layng Creek",
+   "lat": 43.78,
+   "lon": -122.95,
+   "elev_ft": 1300,
+   "land": "Umpqua NF (Cottage Grove RD)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle",
+    "morel_natural"
+   ],
+   "habitat": "Doug-fir second growth and oak / madrone fringe on the valley edge of the Calapooya foothills; mixed ownership, check the land status",
+   "pdx_drive_h": 2.25,
+   "regions": [
+    "wv"
+   ],
+   "sightings": {
+    "chanterelle": 86,
+    "morel": 54,
+    "king": 9
+   }
+  },
+  {
+   "id": "oakridge_lowell",
+   "name": "Oakridge / Lowell / Hwy 58",
+   "lat": 43.75,
+   "lon": -122.45,
+   "elev_ft": 1300,
+   "land": "Willamette NF (Middle Fork RD)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle",
+    "morel_natural"
+   ],
+   "habitat": "Doug-fir / hemlock along the Middle Fork Willamette and Hwy 58, chanterelles in older stands",
+   "pdx_drive_h": 2.75,
+   "regions": [
+    "wv"
+   ],
+   "sightings": {
+    "chanterelle": 91,
+    "morel": 17,
+    "king": 19
+   }
+  },
+  {
+   "id": "coos_bay_coast",
+   "name": "Coos Bay / North Bend / Hwy 38 corridor",
+   "lat": 43.35,
+   "lon": -124.25,
+   "elev_ft": 150,
+   "land": "Coos Bay BLM, Siuslaw NF (Oregon Dunes NRA)",
+   "side": "coast",
+   "coastal": true,
+   "species": [
+    "chanterelle",
+    "king_fall"
+   ],
+   "habitat": "shore pine and spruce near the dunes for fall kings, hemlock / spruce hills for chanterelles; much nearby land is private timber",
+   "pdx_drive_h": 3.5,
+   "regions": [
+    "coast",
+    "sw"
+   ],
+   "sightings": {
+    "chanterelle": 69,
+    "morel": 0,
+    "king": 60
+   }
+  },
+  {
+   "id": "elkton_loon_lake",
+   "name": "Elkton / lower Umpqua / Loon Lake",
+   "lat": 43.6,
+   "lon": -123.75,
+   "elev_ft": 400,
+   "land": "Coos Bay BLM (mixed with private timber - check ownership)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle"
+   ],
+   "habitat": "low Coast Range Doug-fir and tanoak, mild damp fall; chanterelles only, scored with the interior season window",
+   "pdx_drive_h": 3.0,
+   "regions": [
+    "coast",
+    "sw"
+   ],
+   "sightings": {
+    "chanterelle": 41,
+    "morel": 0,
+    "king": 21
+   }
+  },
+  {
+   "id": "south_umpqua_tiller",
+   "name": "South Umpqua / Tiller / Hwy 227",
+   "lat": 42.95,
+   "lon": -122.9,
+   "elev_ft": 1200,
+   "land": "Umpqua NF (Tiller RD)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle",
+    "morel_natural"
+   ],
+   "habitat": "Doug-fir / madrone / oak foothills along the South Umpqua; few public sightings, so scores here are weather-model only",
+   "pdx_drive_h": 3.75,
+   "regions": [
+    "south",
+    "sw"
+   ],
+   "sightings": {
+    "chanterelle": 21,
+    "morel": 3,
+    "king": 0
+   }
+  },
+  {
+   "id": "camas_valley",
+   "name": "Camas Valley / Hwy 42",
+   "lat": 43.034,
+   "lon": -123.674,
+   "elev_ft": 1100,
+   "land": "BLM and private timber (check ownership)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle",
+    "morel_natural"
+   ],
+   "habitat": "Coast Range foothills of Douglas County: Doug-fir, madrone and oak with mixed BLM and private timber ownership. Very few public sightings are on record here, so scores are weather-model only.",
+   "pdx_drive_h": 3.5,
+   "regions": [
+    "coast",
+    "sw"
+   ],
+   "sightings": {
+    "chanterelle": 4,
+    "morel": 2,
+    "king": 0
+   }
+  },
+  {
+   "id": "timber_or",
+   "name": "Timber / Sunset Hwy 26 / northern Coast Range",
+   "lat": 45.72,
+   "lon": -123.3,
+   "elev_ft": 1020,
+   "land": "Clatsop State Forest (ODF) edge, mostly private timberland - check ownership",
+   "side": "coast",
+   "coastal": true,
+   "species": [
+    "chanterelle",
+    "king_fall"
+   ],
+   "habitat": "Doug-fir / hemlock second growth on the east slope of the northern Coast Range, wet and mild; mostly industrial timberland, so ownership and access matter",
+   "pdx_drive_h": 1.0,
+   "regions": [
+    "pdx",
+    "coast"
+   ],
+   "sightings": {
+    "chanterelle": 103,
+    "morel": 16,
+    "king": 17
+   }
+  },
+  {
+   "id": "alsea_marys_peak",
+   "name": "Alsea / Marys Peak area",
+   "lat": 44.4,
+   "lon": -123.57,
+   "elev_ft": 900,
+   "land": "Siuslaw NF (Central Coast RD), BLM and private timber (check ownership)",
+   "side": "coast",
+   "coastal": true,
+   "species": [
+    "chanterelle",
+    "king_fall"
+   ],
+   "habitat": "Coast Range Douglas-fir and western hemlock second growth, with chanterelles in moss and salal under mature stands. The Marys Peak Botanical Area itself is closed to picking, so work lower slopes on open Siuslaw National Forest land and check parcel ownership: much of the valley floor and many ridges around Alsea are private timber",
+   "pdx_drive_h": 2.25,
+   "regions": [
+    "coast",
+    "wv"
+   ],
+   "sightings": {
+    "chanterelle": 94,
+    "morel": 18,
+    "king": 23
+   }
+  },
+  {
+   "id": "yachats_perpetua",
+   "name": "Yachats / Cape Perpetua coast",
+   "lat": 44.26,
+   "lon": -124.06,
+   "elev_ft": 400,
+   "land": "Siuslaw NF (Central Coast RD)",
+   "side": "coast",
+   "coastal": true,
+   "species": [
+    "chanterelle",
+    "king_fall"
+   ],
+   "habitat": "Sitka spruce, hemlock and shore pine on the central Oregon coast, where chanterelles and coastal king boletes both turn up in numbers in fall. Picking is not allowed in wilderness, botanical, research natural or scenic areas (Cummins Creek Wilderness and the Cape Perpetua Scenic Area are here) or in state parks, so stay on open national forest land",
+   "pdx_drive_h": 2.5,
+   "regions": [
+    "coast"
+   ],
+   "sightings": {
+    "chanterelle": 92,
+    "morel": 1,
+    "king": 82
+   }
+  },
+  {
+   "id": "corvallis_foothills",
+   "name": "Corvallis foothills / McDonald-Dunn",
+   "lat": 44.62,
+   "lon": -123.36,
+   "elev_ft": 700,
+   "land": "OSU McDonald-Dunn Research Forest, BLM and private timber (check ownership)",
+   "side": "west",
+   "coastal": false,
+   "species": [
+    "chanterelle",
+    "morel_natural"
+   ],
+   "habitat": "Willamette Valley edge: Douglas-fir with bigleaf maple, oak and madrone. Many chanterelle and morel reports are on file here, but mostly from trails and parks, and much of the land is a research forest or private timber, so confirm access before you go",
+   "pdx_drive_h": 1.5,
+   "regions": [
+    "pdx",
+    "wv"
+   ],
+   "sightings": {
+    "chanterelle": 82,
+    "morel": 25,
+    "king": 22
+   }
+  }
+ ],
+ "regions": {
+  "pdx": "Portland area (about 2 h drive or less)",
+  "wv": "Willamette Valley and west Cascades",
+  "central": "Central Oregon (east slope)",
+  "south": "Southern Cascades and Klamath",
+  "sw": "Southwest Oregon",
+  "coast": "Coast and Coast Range"
+ },
+ "regions_by_skill_zone": {
+  "metolius_greenridge": [
+   "central"
+  ],
+  "santiam_pass": [
+   "wv",
+   "central"
+  ],
+  "mckenzie_west": [
+   "wv"
+  ],
+  "cascade_lakes": [
+   "central"
+  ],
+  "newberry_lapine": [
+   "central"
+  ],
+  "crescent_odell": [
+   "central",
+   "south"
+  ],
+  "chemult_walker": [
+   "south"
+  ],
+  "diamond_lemolo": [
+   "south"
+  ],
+  "n_umpqua": [
+   "south",
+   "sw"
+  ],
+  "prospect_unioncreek": [
+   "south",
+   "sw"
+  ],
+  "klamath_westside": [
+   "south"
+  ],
+  "ashland_applegate": [
+   "sw"
+  ],
+  "illinois_valley": [
+   "sw"
+  ],
+  "south_coast": [
+   "coast",
+   "sw"
+  ],
+  "dunes_reedsport": [
+   "coast"
+  ]
+ }
+}

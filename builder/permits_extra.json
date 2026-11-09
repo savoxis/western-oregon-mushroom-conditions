@@ -1,0 +1,68 @@
+{
+ "_comment": "Permit additions for the shrooms site only. Text comes from official Forest Service pages fetched 2026-11-07. The skill's permits.md is untouched. Entries with verify=true are shown with 'verify before you go'.",
+ "entries": [
+  {
+   "match": [
+    "Mt. Hood NF"
+   ],
+   "name": "Mt. Hood NF",
+   "verified": "2026-11-07",
+   "verify": false,
+   "rule": "Up to 1 gal/day and 10 gal/year per person for personal use, no permit; cannot be sold, bartered or exchanged (commercial permit needed). Picking is prohibited in wilderness, research areas, developed recreation areas and riparian areas; no truffle harvest, no raking or digging."
+  },
+  {
+   "match": [
+    "Willamette NF"
+   ],
+   "name": "Willamette NF (2026-11 addendum)",
+   "verified": "2026-11-07",
+   "verify": false,
+   "rule": "All mushrooms must be cut in half. Picking is not permitted in wilderness, botanical, scenic or research natural areas, or inside fire closures."
+  },
+  {
+   "match": [
+    "Siuslaw NF"
+   ],
+   "name": "Siuslaw NF (2026-11 addendum)",
+   "verified": "2026-11-07",
+   "verify": false,
+   "rule": "Picking is prohibited in botanical areas, research natural areas, wilderness and scenic areas (for example parts of Cascade Head)."
+  },
+  {
+   "match": [
+    "State Forest (ODF)"
+   ],
+   "name": "Oregon State Forests (ODF)",
+   "verified": "2026-08-14",
+   "verify": true,
+   "rule": "The compiled permit file lists 1 gal or less per vehicle, no permit, for Oregon State Forests. This could not be re-confirmed on an official ODF page, so check with the ODF district before you pick."
+  },
+  {
+   "match": [
+    "private"
+   ],
+   "name": "Private land",
+   "verified": "2026-11-07",
+   "verify": false,
+   "rule": "Picking on private land, including private timberland, needs the owner's permission. Many timber companies post or gate their land."
+  },
+  {
+   "match": [
+    "BLM and private"
+   ],
+   "name": "BLM",
+   "verified": "2026-11-07",
+   "verify": true,
+   "rule": "No BLM rule for this district is in the compiled permit file. The Coos Bay BLM rule is under 1 gal for personal use with no permit; confirm with the local BLM field office before picking."
+  },
+  {
+   "match": [
+    "OSU"
+   ],
+   "name": "OSU research forests",
+   "verified": "2026-11-07",
+   "verify": true,
+   "rule": "OSU research forests are managed for teaching and research. Access and any picking rules could not be confirmed online; contact OSU College Forests before picking."
+  }
+ ]
+}
