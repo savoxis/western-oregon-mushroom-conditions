@@ -4,7 +4,7 @@
 # What it does (cron every minute):
 #   * content sync: every ~10 min, while the VPS is healthy, pulls the generated static site VPS -> home through a
 #     read-only forced-command key (rrsync -ro /opt/shrooms/site), then checks home's index.html is identical to what the VPS
-#     serves and that the data is fresh. The fallback is a plain nginx container (nginx-shrooms, 172.16.128.198).
+#     serves and that the data is fresh. The fallback is a plain nginx container (nginx-shrooms) on its own LAN address.
 #   * watchdog: the DNS A record shrooms.strong.beer is the role register (VPS_IP = VPS active). If the VPS origin fails for
 #     FAIL_AFTER seconds AND the home path (through Nginx Proxy Manager, with a valid certificate) is healthy, it flips the
 #     A record to the home IP (TTL 60). When the VPS has been healthy for RETURN_AFTER seconds and a recent sync succeeded it
