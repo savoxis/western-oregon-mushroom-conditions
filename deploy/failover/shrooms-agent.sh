@@ -4,7 +4,7 @@
 # What it does (cron every minute):
 #   * content sync: every ~10 min, while the VPS is healthy, pulls the generated static site VPS -> home through a
 #     read-only forced-command key (rrsync -ro /opt/shrooms/site), then checks home's index.html is identical to what the VPS
-#     serves and that the data is fresh. The fallback is a plain nginx container (nginx-shrooms) on its own LAN address.
+#     serves and that the data is fresh. The fallback is a plain nginx container (nginx-shrooms, 172.16.128.198).
 #   * watchdog: the DNS A record shrooms.strong.beer is the role register (VPS_IP = VPS active). If the VPS origin fails for
 #     FAIL_AFTER seconds AND the home path (through Nginx Proxy Manager, with a valid certificate) is healthy, it flips the
 #     A record to the home IP (TTL 60). When the VPS has been healthy for RETURN_AFTER seconds and a recent sync succeeded it
@@ -62,7 +62,12 @@ data_age() {  # seconds since the locally served data was generated (from data/c
 
 sync() {
   if [ "$DRY" = 1 ]; then log "DRY: would rsync the site from the VPS"; return 0; fi
-  rsync -a --delete --delay-updates --max-delete=500 --no-owner --no-group -e "$RS" "shsync@$VPS_IP:./" "$WWW/" || { log "sync: rsync failed"; k_sync down "rsync from the VPS failed"; return 1; }
+  rsync -a --delete --delay-updates --max-delete=500 --no-owner --no-group -e "$RS" "shsync@$VPS_IP:./" "$WWW/"
+  local rc=$?
+  # 24 = some source files vanished mid-transfer. The builder rewrites data files while a sync can be running, so that is normal;
+  # the checks below (files present, data fresh, index.html identical) decide whether the copy is good.
+  if [ "$rc" = 24 ]; then log "sync: rsync reported vanished files (24), continuing to verify"; rc=0; fi
+  [ "$rc" = 0 ] || { log "sync: rsync failed (exit $rc)"; k_sync down "rsync from the VPS failed (exit $rc)"; return 1; }
   chown -R 99:100 "$WWW" 2>/dev/null; now > "$ST/last_sync"
   [ -s "$WWW/index.html" ] && [ -s "$WWW/data/c/zones.json" ] || { log "sync: files missing after rsync"; k_sync down "site files missing after sync"; return 1; }
   local age; age="$(data_age)" || { log "sync: about.json unreadable"; k_sync down "about.json unreadable after sync"; return 1; }
