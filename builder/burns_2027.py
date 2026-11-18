@@ -32,7 +32,7 @@ WFIGS = ("https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/"
          "WFIGS_Interagency_Perimeters/FeatureServer/0/query")
 # Oregon, generous on every side; the state filter does the real work
 OR_BBOX = (-124.8, 41.9, -116.4, 46.35)
-STATUS = ("open", "partial", "closed", "unknown")
+STATUS = ("open", "partial", "closed", "none_listed", "unknown")
 
 
 # ---------------------------------------------------------------- fetch
@@ -149,7 +149,75 @@ def clean_polys(geom, tol, min_ring_acres):
     return out
 
 
+# ---------------------------------------------------------------- Oregon share of fires that cross the state line
+def _in_ring(x, y, ring):
+    inside = False
+    j = len(ring) - 1
+    for i in range(len(ring)):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
+            inside = not inside
+        j = i
+    return inside
+
+
+def in_polys(x, y, polys):
+    """polys: list of polygons, each a list of rings (outer first, then holes)."""
+    for poly in polys:
+        if poly and _in_ring(x, y, poly[0]) and not any(_in_ring(x, y, h) for h in poly[1:]):
+            return True
+    return False
+
+
+def load_oregon(path):
+    try:
+        with open(path) as f:
+            g = json.load(f)
+    except (FileNotFoundError, ValueError):
+        return None
+    g = g.get("geometry", g)
+    return [g["coordinates"]] if g.get("type") == "Polygon" else g.get("coordinates")
+
+
+def oregon_share(polys, oregon, samples=20000):
+    """Fraction of a fire inside Oregon: 1.0 when every vertex is inside, else a grid-sample estimate."""
+    if not oregon:
+        return 1.0
+    pts = [p for poly in polys for ring in poly for p in ring]
+    if all(in_polys(p[0], p[1], oregon) for p in pts):
+        return 1.0
+    x0, x1 = min(p[0] for p in pts), max(p[0] for p in pts)
+    y0, y1 = min(p[1] for p in pts), max(p[1] for p in pts)
+    step = max(math.sqrt((x1 - x0) * (y1 - y0) / samples), 1e-4)
+    n_fire = n_or = 0
+    y = y0 + step / 2
+    while y < y1:
+        x = x0 + step / 2
+        while x < x1:
+            if in_polys(x, y, polys):
+                n_fire += 1
+                if in_polys(x, y, oregon):
+                    n_or += 1
+            x += step
+        y += step
+    return n_or / n_fire if n_fire else 1.0
+
+
 # ---------------------------------------------------------------- side tables
+def tidy_name(name):
+    """WFIGS names come in caps ("FOX", "WRIGHTS SPRING"): title-case words, keep codes with digits as given."""
+    out = []
+    for w in name.split():
+        if any(c.isdigit() for c in w):
+            out.append(w.upper())
+        else:
+            out.append("-".join(("Mc" + part[2:3].upper() + part[3:].lower()) if part.lower().startswith("mc") and len(part) > 3
+                                else part[:1].upper() + part[1:].lower() for part in w.split("-")))
+    return " ".join(out)
+
+
+
 def _load_json(path, default):
     try:
         with open(path) as f:
@@ -216,7 +284,7 @@ def when(v):
         return str(v)[:10]
 
 
-def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres=40):
+def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres=40, oregon=None):
     skip = {norm(x["name"]): x.get("reason", "") for x in exclude if x.get("name")}
     best = {}
     for f in features:
@@ -224,7 +292,7 @@ def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres
         name = (prop(p, "poly_IncidentName", "attr_IncidentName") or "").strip()
         if not name:
             continue
-        name = " ".join(w if w.isupper() and len(w) <= 3 else w.capitalize() for w in name.split())
+        name = tidy_name(name)
         key = norm(name) + "|" + str(prop(p, "attr_UniqueFireIdentifier", "poly_IRWINID") or "")
         acres = float(prop(p, "poly_GISAcres", "attr_IncidentSize") or 0)
         if key in best and best[key]["acres"] >= acres:
@@ -240,9 +308,11 @@ def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres
         if not polys:
             continue
         p = v["props"]
+        share = oregon_share(polys, oregon)
         fires.append({
             "name": v["name"],
             "acres": int(round(v["acres"])),
+            "or_acres": int(round(v["acres"] * share)),
             "conifer_acres": conifer.get(n),
             "start": when(prop(p, "attr_FireDiscoveryDateTime")),
             "owner": prop(p, "attr_POOLandownerKind", "attr_POOLandownerCategory"),
@@ -277,6 +347,7 @@ def main(argv=None):
     ap.add_argument("--fixture", help="read GeoJSON features from this file instead of WFIGS")
     ap.add_argument("--conifer", default=os.path.join(PASS_DIR, "conifer.csv"))
     ap.add_argument("--out", default=SITE_DATA + "/c/burns.json")
+    ap.add_argument("--oregon", default=None, help="Oregon outline GeoJSON (default: site/oregon.json)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args(argv)
 
@@ -287,10 +358,19 @@ def main(argv=None):
         feats = query_wfigs(a.year, a.min_acres, a.state)
     closures = _load_json(os.path.join(PASS_DIR, "closures.json"), {})
     exclude = _load_json(os.path.join(PASS_DIR, "exclude.json"), [])
-    out, dropped = build(feats, a.year, closures, exclude, load_conifer(a.conifer))
+    oregon = None
+    for cand in ([a.oregon] if a.oregon else [os.path.join(os.path.dirname(SITE_DATA), "oregon.json"),
+                                               os.path.join(HERE, "..", "site", "oregon.json")]):
+        oregon = load_oregon(cand)
+        if oregon:
+            break
+    if not oregon:
+        print("no Oregon outline found: acres outside Oregon are counted in full", file=sys.stderr)
+    out, dropped = build(feats, a.year, closures, exclude, load_conifer(a.conifer), oregon=oregon)
 
     total = sum(f["acres"] for f in out["fires"])
-    print("%d fires, %s acres, %d excluded%s" % (len(out["fires"]), format(total, ","), len(dropped),
+    or_total = sum(f["or_acres"] for f in out["fires"])
+    print("%d fires, %s acres (%s in Oregon), %d excluded%s" % (len(out["fires"]), format(total, ","), format(or_total, ","), len(dropped),
           "" if not dropped else " (" + ", ".join(d["name"] for d in dropped) + ")"), file=sys.stderr)
     unk = [f["name"] for f in out["fires"] if f["closure"]["status"] == "unknown"]
     if unk:

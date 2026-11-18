@@ -54,6 +54,42 @@ class Geometry(unittest.TestCase):
         self.assertEqual(len(B.clean_polys(g, 0.0008, 40)), 1)
 
 
+class Names(unittest.TestCase):
+    def test_tidy(self):
+        self.assertEqual(B.tidy_name("FOX"), "Fox")
+        self.assertEqual(B.tidy_name("WRIGHTS SPRING"), "Wrights Spring")
+        self.assertEqual(B.tidy_name("MCCULLY"), "McCully")
+        self.assertEqual(B.tidy_name("BIG GRASS"), "Big Grass")
+        self.assertEqual(B.tidy_name("OR-PRD-000123"), "OR-PRD-000123")
+
+
+class OregonShare(unittest.TestCase):
+    # a square "Oregon" from -121 to -119 lon, 43 to 45 lat
+    OR = [[[[-121, 43], [-119, 43], [-119, 45], [-121, 45], [-121, 43]]]]
+
+    def test_inside_is_whole(self):
+        polys = B.clean_polys({"type": "Polygon", "coordinates": [circle(-120.0, 44.0, 10)]}, 0.0008, 40)
+        self.assertEqual(B.oregon_share(polys, self.OR), 1.0)
+
+    def test_straddling_is_about_half(self):
+        polys = B.clean_polys({"type": "Polygon", "coordinates": [circle(-119.0, 44.0, 10)]}, 0.0008, 40)
+        self.assertAlmostEqual(B.oregon_share(polys, self.OR), 0.5, delta=0.03)
+
+    def test_build_reports_oregon_acres(self):
+        f = [feat("BIG GRASS", 100000, circle(-119.0, 44.0, 10), uid="Z")]
+        out, _ = B.build(f, 2026, {}, [], {}, oregon=self.OR)
+        self.assertEqual(out["fires"][0]["acres"], 100000)
+        self.assertTrue(47000 < out["fires"][0]["or_acres"] < 53000, out["fires"][0]["or_acres"])
+
+    def test_real_outline_loads(self):
+        path = os.path.join(os.path.dirname(os.path.dirname(HERE)), "site", "oregon.json")
+        if not os.path.exists(path):
+            self.skipTest("site/oregon.json not next to the builder")
+        o = B.load_oregon(path)
+        self.assertTrue(B.in_polys(-122.68, 45.52, o))       # Portland
+        self.assertFalse(B.in_polys(-116.2, 43.6, o))        # Boise
+
+
 class Build(unittest.TestCase):
     def setUp(self):
         self.feats = [
@@ -102,7 +138,7 @@ class Build(unittest.TestCase):
             try:
                 import importlib
                 importlib.reload(B)
-                rc = B.main(["--fixture", fx, "--conifer", csvp, "--out", out])
+                rc = B.main(["--fixture", fx, "--conifer", csvp, "--out", out, "--oregon", os.path.join(d, "none.json")])
             finally:
                 os.environ.pop("BURN_PASS_DIR", None)
                 importlib.reload(B)
@@ -110,6 +146,7 @@ class Build(unittest.TestCase):
             data = json.load(open(out))
             self.assertEqual(len(data["fires"]), 3)
             self.assertEqual(data["fires"][0]["conifer_acres"], 61001)
+            self.assertIn("or_acres", data["fires"][0])
             self.assertLess(os.path.getsize(out), 60000)
 
     def test_empty_refuses_to_write(self):

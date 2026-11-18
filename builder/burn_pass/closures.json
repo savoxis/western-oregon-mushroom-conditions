@@ -1,7 +1,14 @@
 {
-  "Crosswhite": {"status": "unknown", "order_url": null, "checked": null, "note": "Ochoco NF. Recheck in February."},
-  "Shingle": {"status": "unknown", "order_url": null, "checked": null, "note": "Ochoco NF. Recheck in February."},
-  "Hagen": {"status": "unknown", "order_url": null, "checked": null, "note": "Umatilla NF. Recheck in February."},
-  "Grasshopper": {"status": "unknown", "order_url": null, "checked": null, "note": "Recheck in February."},
-  "Wrights Spring": {"status": "unknown", "order_url": null, "checked": null, "note": "Recheck in February."}
+  "Crosswhite": {"status": "none_listed", "order_url": "https://www.fs.usda.gov/r06/ochoco/alerts", "checked": "2026-11-18", "note": "Ochoco NF lists no closure order for this fire. Recheck in February."},
+  "Shingle": {"status": "none_listed", "order_url": "https://www.fs.usda.gov/r06/ochoco/alerts", "checked": "2026-11-18", "note": "Ochoco NF lists no closure order for this fire. Recheck in February."},
+  "Hagen": {"status": "none_listed", "order_url": "https://fs.usda.gov/r06/umatilla/alerts", "checked": "2026-11-18", "note": "Umatilla NF lists no closure order for this fire. Recheck in February."},
+  "Wrights Spring": {"status": "none_listed", "order_url": "https://www.fs.usda.gov/r06/fremont-winema/alerts", "checked": "2026-11-18", "note": "Fremont-Winema NF lists no closure order. For land outside the national forest, check with the landowner or agency."},
+  "Grasshopper": {"status": "partial", "order_url": "https://www.fs.usda.gov/r06/mthood/alerts/closure-place-grasshopper-fire", "checked": "2026-11-18", "note": "Mt. Hood NF order 06-06-01-27-01 closes a reduced area and listed roads, trails and sites, through Dec 31, 2027."},
+  "Austin": {"status": "partial", "order_url": "https://www.fs.usda.gov/r06/mthood/alerts/clackamas-river-rd-fires", "checked": "2026-11-18", "note": "Mt. Hood NF order 06-06-05-26-20 closes forest land, roads and trails inside a boundary, through Dec 31, 2026. Recheck in February."},
+  "McCully": {"status": "closed", "order_url": "https://www.fs.usda.gov/r06/wallowa-whitman/alerts/mccully-fire-closure", "checked": "2026-11-18", "note": "Wallowa-Whitman NF order 06-16-01-26-14 closes all forest land and roads inside the perimeter, through Dec 31, 2026. Recheck in February."},
+  "Anthony": {"status": "closed", "order_url": "https://www.fs.usda.gov/r06/wallowa-whitman/alerts/anthony-fire-area-closure-1", "checked": "2026-11-18", "note": "Wallowa-Whitman NF order 06-16-01-26-09 closes all forest land and roads inside the perimeter except roads 4300, 4380 and 7312, through Dec 31, 2026. Recheck in February."},
+  "Egypt": {"status": "partial", "order_url": "https://www.fs.usda.gov/r06/malheur/alerts/egypt-fire-fsr-41-road-closure", "checked": "2026-11-18", "note": "Malheur NF order 06-04-02-26-12 closes part of Forest Road 41, through Dec 31, 2026."},
+  "Second Flat": {"status": "partial", "order_url": "https://www.fs.usda.gov/r06/malheur/alerts/second-flat-fire-closure", "checked": "2026-11-18", "note": "Malheur NF order 06-04-02-26-21 closes part of Forest Road 41, through Dec 31, 2026."},
+  "Akawa Butte": {"status": "closed", "order_url": "https://www.fs.usda.gov/r06/ochoco/alerts/akawa-butte-round-butte-fires-emergency-closure-order-crooked-river-national", "checked": "2026-11-18", "note": "Crooked River National Grassland order 06-07-05-26-03 closes federal land inside the fire, through Dec 31, 2026."},
+  "Round Butte": {"status": "closed", "order_url": "https://www.fs.usda.gov/r06/ochoco/alerts/akawa-butte-round-butte-fires-emergency-closure-order-crooked-river-national", "checked": "2026-11-18", "note": "Crooked River National Grassland order 06-07-05-26-04 closes federal land inside the fire, through Dec 31, 2026."}
 }

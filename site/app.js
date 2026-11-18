@@ -807,6 +807,7 @@ const BURN_STATUS = {
   open: 'Open to the public when last checked',
   partial: 'Partly closed when last checked',
   closed: 'Closed when last checked',
+  none_listed: 'No Forest Service closure order listed when last checked',
   unknown: 'Closure status not checked yet'
 };
 function loadBurns() {
@@ -823,6 +824,7 @@ function burnPopup(f) {
   const box = h('div', 'spot');
   box.appendChild(h('b', null, (/\b(fire|complex)$/i.test(f.name) ? f.name : f.name + ' Fire') + ', ' + (BURNS.year || 2026)));
   let line = fInt(f.acres) + ' acres burned';
+  if (f.or_acres !== undefined && f.or_acres < f.acres * 0.98) line += ' (' + fInt(f.or_acres) + ' in Oregon)';
   if (f.conifer_acres) line += ', about ' + fInt(f.conifer_acres) + ' of them conifer forest';
   if (f.start) line += '. Started ' + fMD(new Date(f.start + 'T00:00:00Z')) + '.';
   box.appendChild(h('div', null, line));
@@ -830,7 +832,7 @@ function burnPopup(f) {
   const st = h('div', 'muted small', (BURN_STATUS[c.status] || BURN_STATUS.unknown) + (c.checked ? ' (' + fMD(new Date(c.checked + 'T00:00:00Z')) + ')' : '') + '.');
   if (c.order_url && /^https:\/\//.test(c.order_url)) {
     st.appendChild(document.createTextNode(' '));
-    const a = h('a', null, 'Closure order');
+    const a = h('a', null, c.status === 'none_listed' ? 'Forest alerts page' : 'Closure order');
     a.href = c.order_url; a.target = '_blank'; a.rel = 'noopener noreferrer';
     st.appendChild(a);
   }
@@ -838,7 +840,7 @@ function burnPopup(f) {
   if (c.note) box.appendChild(h('div', 'muted small', c.note));
   box.appendChild(h('div', 'muted small', 'Inside the line is not all morel ground: severity, forest type and private land vary a lot. Dead trees fall without warning, worst in wind.'));
   const more = h('div', 'small');
-  const a = h('a', null, 'Severity, open land and fruiting timing: the 2027 Burn Morel Pass');
+  const a = h('a', null, 'Coming spring 2027: severity, open land and fruiting timing in the Burn Morel Pass');
   a.href = 'burn-pass.html';
   more.appendChild(a);
   box.appendChild(more);
@@ -854,7 +856,7 @@ function drawBurns(made) {
   let acres = 0;
   const bounds = L.latLngBounds([]);
   BURNS.fires.forEach((f) => {
-    acres += f.acres;
+    acres += (f.or_acres !== undefined ? f.or_acres : f.acres);
     const closed = f.closure && f.closure.status === 'closed';
     const latlngs = f.polys.map((poly) => poly.map((ring) => ring.map((p) => [p[1], p[0]])));
     const g = L.polygon(latlngs, { renderer: made.rend, color: closed ? '#6b6b6b' : '#a63d14', weight: 1.5, dashArray: closed ? '4 4' : null, fillColor: '#e8743b', fillOpacity: closed ? 0.08 : 0.2, bubblingMouseEvents: false });
@@ -862,7 +864,7 @@ function drawBurns(made) {
     g.addTo(made.gBurn);
     bounds.extend(g.getBounds());
   });
-  note.textContent = fInt(BURNS.fires.length) + ' Oregon fires of ' + (BURNS.year || 2026) + ' over 1,000 acres, ' + fInt(acres) + ' acres in all. Most big burns are east of the Cascades. Burn outlines only: burned does not mean open, safe or productive.';
+  note.textContent = fInt(BURNS.fires.length) + ' Oregon fires of ' + (BURNS.year || 2026) + ' over 1,000 acres, ' + fInt(acres) + ' acres burned in Oregon. Most big burns are east of the Cascades. Burn outlines only: burned does not mean open, safe or productive.';
   const row = h('div', 'rep');
   const fit = h('button', 'btn sm', 'Show all burns');
   fit.type = 'button';
