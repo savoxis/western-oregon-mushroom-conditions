@@ -14,9 +14,10 @@ REPORT = "--report" in sys.argv
 if REPORT:
     sys.argv.remove("--report")
 
-EAST_IDS = ["dufur_badger", "ashwood_crooked_grassland", "fossil_kinzua", "ochoco_mitchell", "umatilla_tollgate",
+EAST_IDS = ["dufur_badger", "maury_mountains", "fossil_kinzua", "ochoco_mitchell", "umatilla_tollgate",
             "anthony_elkhorns", "wallowa_joseph", "malheur_emigrant", "sprague_river_bly"]
-MUST_COVER = ["Crosswhite", "Grasshopper", "Hagen", "Wrights Spring", "Shingle"]   # the five biggest 2026 conifer burns
+MUST_COVER = ["Crosswhite", "Grasshopper", "Hagen", "Wrights Spring", "Shingle"]   # the five biggest 2026 conifer burns, by name
+MUST_COVER_CONIFER = 10000                                                         # and every burn with at least this much conifer
 COVER_KM = 40                                                                      # same radius the zone sighting counts use
 
 
@@ -159,6 +160,10 @@ class Coverage(unittest.TestCase):
             self.assertIn(name, byname)
             d, zid = self.nearest(byname[name])
             self.assertLessEqual(d, COVER_KM, "%s: nearest zone %s is %.0f km away" % (name, zid, d))
+        for f in self.fires:
+            if (f.get("conifer_acres") or 0) >= MUST_COVER_CONIFER:
+                d, zid = self.nearest(f)
+                self.assertLessEqual(d, COVER_KM, "%s: nearest zone %s is %.0f km away" % (f["name"], zid, d))
 
     def test_report(self):
         if not REPORT:

@@ -444,12 +444,12 @@
    ]
   },
   {
-   "id": "ashwood_crooked_grassland",
-   "name": "Crooked River Grassland / Ashwood / Gateway",
-   "lat": 44.72,
-   "lon": -121.05,
-   "elev_ft": 3400,
-   "land": "Ochoco NF (Crooked River National Grassland), BLM and private land - check ownership",
+   "id": "maury_mountains",
+   "name": "Maury Mountains / Post / Paulina Hwy",
+   "lat": 44.03,
+   "lon": -120.42,
+   "elev_ft": 4600,
+   "land": "Ochoco NF (Lookout Mountain RD), BLM and private land below the forest - check ownership",
    "side": "east",
    "coastal": false,
    "species": [
@@ -457,8 +457,8 @@
     "morel_burn",
     "king_spring"
    ],
-   "habitat": "juniper, ponderosa pine and grass on the plateaus east of Lake Billy Chinook; morels only in the pine stringers; the 2026 Akawa Butte and Round Butte burns",
-   "pdx_drive_h": 2.75,
+   "habitat": "ponderosa pine on the Maury Mountains south of the Crooked River near Post; the 2026 Coyote burn",
+   "pdx_drive_h": 3.75,
    "regions": [
     "central",
     "east"
@@ -539,7 +539,7 @@
     "morel_burn",
     "king_spring"
    ],
-   "habitat": "lodgepole, larch and mixed fir on the north end of the Elkhorns west of Baker City; the 2026 Anthony burn",
+   "habitat": "lodgepole, larch and mixed fir in the Elkhorns west of Baker City and toward Sumpter; the 2026 Anthony and McCully burns",
    "pdx_drive_h": 4.75,
    "regions": [
     "east"
@@ -559,7 +559,7 @@
     "morel_burn",
     "king_spring"
    ],
-   "habitat": "mixed conifer and larch on the north face of the Wallowas above Joseph; the 2026 McCully burn",
+   "habitat": "mixed conifer and larch on the north face of the Wallowas above Joseph; no big 2026 burn here, kept for natural morels and spring kings",
    "pdx_drive_h": 5.5,
    "regions": [
     "east"
