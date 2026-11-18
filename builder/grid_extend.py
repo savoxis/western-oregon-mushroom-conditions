@@ -7,7 +7,8 @@ so the Ochocos, Blue Mountains, Wallowas and Malheur country have no colour. Thi
   2. lays a lattice at that spacing over Oregon and keeps the spots farther than 0.75 x spacing from every current point,
   3. keeps only spots with real forest around them: LANDFIRE 2024 tree cover (EVC 101-199) on a 5 x 5 grid, 3 km apart,
      must be at least --min-forest percent (default 30). Sagebrush, farmland and lava stay blank on the map, as they should,
-  4. reads each kept spot's elevation (Open-Meteo elevation API, through om_key when a key is set),
+  4. reads each kept spot's elevation (Open-Meteo elevation API, through om_key when a key is set) and drops spots at water
+     level or outside every elevation band of their species (the model could never score them),
   5. copies side, coastal, species and any other fields from the nearest current point on the same side of the Cascades.
 Free data only. The new points are scored by the same model; the hourly fill backfills them like any grid point.
 
@@ -17,6 +18,7 @@ usage, as the build user on the VPS:
 options:
   --min-forest PCT   forest share a spot needs (default 30)
   --spacing KM       lattice spacing (default: measured from the current points)
+  --skip ID,ID       leave out these point ids (as the dry run prints them)
   --force            write even while listed zones are still backfilling (normally refused, so zones fill first)
 Rollback: copy the data/grid.json.bak-* file this prints back over data/grid.json. Stdlib only."""
 import json, math, os, sys, time, urllib.parse, urllib.request
@@ -172,8 +174,29 @@ def new_point(lat, lon, elev, points):
     return p
 
 
-def plan(points, oregon, km, min_forest, evc_fn=landfire_evc, elev_fn=elevations_ft):
-    """Returns (new points, rejected spots with reasons). Network goes only through evc_fn and elev_fn."""
+def load_bands():
+    """Elevation bands per species from the skill's registry, or {} when it is not found (then no band check)."""
+    for path in (os.path.join(SKILL, "references", "species_registry.json"),
+                 os.path.join(HERE, "..", "scout", "references", "species_registry.json")):
+        try:
+            return {k: v.get("elev_bands_ft") for k, v in load(path)["species"].items()}
+        except (OSError, ValueError, KeyError):
+            continue
+    return {}
+
+
+def scorable(p, bands):
+    """True when the point's elevation sits inside at least one band of one of its species, so the model can ever score it."""
+    known = [bands[k] for k in p.get("species", []) if bands.get(k)]
+    if not known:
+        return True
+    return any(lo <= p["elev_ft"] <= hi for b in known for lo, hi in b.values())
+
+
+def plan(points, oregon, km, min_forest, evc_fn=landfire_evc, elev_fn=elevations_ft, bands=None, skip=()):
+    """Returns (new points, rejected spots with reasons). Network goes only through evc_fn and elev_fn.
+    Also dropped: spots at water level (10 ft or less), spots above or below every band of their species, and ids in skip."""
+    bands = load_bands() if bands is None else bands
     cands = [(la, lo) for la, lo in lattice(oregon, points[0], km)
              if min(hav(la, lo, p["lat"], p["lon"]) for p in points) > 0.75 * km]
     rings = [s for la, lo in cands for s in ring25(la, lo)]
@@ -191,7 +214,14 @@ def plan(points, oregon, km, min_forest, evc_fn=landfire_evc, elev_fn=elevations
     for (la, lo, f), e in zip(keep, elevs):
         p = new_point(la, lo, e, points)
         p["_forest_pct"] = f
-        new.append(p)
+        if p["id"] in skip:
+            rejected.append((la, lo, "skipped by hand"))
+        elif e <= 10:
+            rejected.append((la, lo, "at water level"))
+        elif not scorable(p, bands):
+            rejected.append((la, lo, "%d ft is outside every species band" % e))
+        else:
+            new.append(p)
     return new, rejected
 
 
@@ -229,6 +259,7 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     write, force = "--write" in argv, "--force" in argv
     min_forest = int(argv[argv.index("--min-forest") + 1]) if "--min-forest" in argv else 30
+    skip = set(argv[argv.index("--skip") + 1].split(",")) if "--skip" in argv else set()
     doc = load(GRID)
     points = doc["points"]
     if len(points) < 3:
@@ -242,11 +273,14 @@ def main(argv=None):
         return 1
     ids = {p["id"] for p in points}
     print("current grid: %d points, spacing %.1f km" % (len(points), km))
-    new, rejected = plan(points, oregon, km, min_forest)
+    new, rejected = plan(points, oregon, km, min_forest, skip=skip)
     new = [p for p in new if p["id"] not in ids]
     years = list(range(FIRST_YEAR, date.today().year + 1))
     calls = len(new) * len(years) * LITE_COST
     print("%d new forest points (min %d%% forest); %d spots left blank" % (len(new), min_forest, len(rejected)))
+    for la, lo, why in rejected:
+        if "forest" not in why and "LANDFIRE" not in why:
+            print("  dropped %.3f,%.3f: %s" % (la, lo, why))
     print("%-18s %8s %9s %7s %-6s %s" % ("id", "lat", "lon", "elev_ft", "side", "forest"))
     for p in sorted(new, key=lambda p: (-p["lat"], p["lon"])):
         print("%-18s %8.3f %9.3f %7d %-6s %d%%" % (p["id"], p["lat"], p["lon"], p["elev_ft"], p.get("side"), p["_forest_pct"]))

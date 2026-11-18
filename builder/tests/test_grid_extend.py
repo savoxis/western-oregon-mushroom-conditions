@@ -116,6 +116,44 @@ class Points(unittest.TestCase):
         self.assertTrue(all(B.in_polys(p["lon"], p["lat"], o) for p in new))
 
 
+class Drops(unittest.TestCase):
+    BANDS = {"morel_natural": {"5": [3000, 4800]}, "king_spring": {"all": [3000, 6500]}, "chanterelle": {"all": [0, 4000]}}
+
+    def run_plan(self, elev, **kw):
+        g = western_grid(SQUARE)
+        return G.plan(g, SQUARE, 35, 30, evc_fn=forest_east_of(-200), elev_fn=lambda s: [elev] * len(s), bands=self.BANDS, **kw)
+
+    def test_water_level(self):
+        new, rej = self.run_plan(0)
+        self.assertEqual(new, [])
+        self.assertTrue(all(why == "at water level" for _, _, why in rej))
+
+    def test_above_every_band(self):
+        new, rej = self.run_plan(7470)
+        self.assertEqual(new, [])
+        self.assertTrue(all("outside every species band" in why for _, _, why in rej))
+
+    def test_inside_a_band_is_kept(self):
+        new, _ = self.run_plan(6200)
+        self.assertTrue(new)
+
+    def test_skip_by_id(self):
+        all_new, _ = self.run_plan(4500)
+        drop = {all_new[0]["id"], all_new[1]["id"]}
+        new, rej = self.run_plan(4500, skip=drop)
+        self.assertEqual(len(new), len(all_new) - 2)
+        self.assertFalse(drop & {p["id"] for p in new})
+        self.assertEqual(sum(1 for _, _, why in rej if why == "skipped by hand"), 2)
+
+    def test_real_registry_bands(self):
+        b = G.load_bands()
+        if not b:
+            self.skipTest("species_registry.json not found")
+        self.assertFalse(G.scorable({"species": ["morel_natural", "king_spring"], "elev_ft": 7470}, b))
+        self.assertTrue(G.scorable({"species": ["morel_natural", "king_spring"], "elev_ft": 5200}, b))
+        self.assertTrue(G.scorable({"species": ["chanterelle", "king_fall"], "elev_ft": 140}, b))
+
+
 class Write(unittest.TestCase):
     def test_backup_then_append(self):
         g = western_grid(SQUARE)
