@@ -882,13 +882,17 @@ function nearbyFinds(host, z, sp) {
   const head = () => { sec.replaceChildren(h('h4', null, 'Past finds nearby')); };
   head();
   if (!SIGHT) { sec.appendChild(h('p', 'zp-note', 'Loading reports...')); loadSightings(); return; }
-  const key = SIGHT_KEY[sp], R = 40, kx = Math.cos(z.lat * Math.PI / 180) * 111.32;
-  const rows = SIGHT.rows.filter((r) => r.sp === key && Math.hypot((r.lon - z.lon) * kx, (r.lat - z.lat) * 111.2) <= R);
-  const blurR = SIGHT.blur.filter((r) => r.sp === key && Math.hypot((r.lon - z.lon) * kx, (r.lat - z.lat) * 111.2) <= R);
+  const key = SIGHT_KEY[sp], kx = Math.cos(z.lat * Math.PI / 180) * 111.32;
+  const near = (set, R) => set.filter((r) => r.sp === key && Math.hypot((r.lon - z.lon) * kx, (r.lat - z.lat) * 111.2) <= R);
+  let R = 40, rows = near(SIGHT.rows, R), blurR = near(SIGHT.blur, R);
+  if (rows.length + blurR.length < 15) {            // sparse country (most of eastern Oregon): look twice as far before giving up
+    R = 80; rows = near(SIGHT.rows, R); blurR = near(SIGHT.blur, R);
+  }
+  const mi = Math.round(R / 1.609);                 // 25 or 50 miles
   const allR = rows.concat(blurR).sort((a, b) => a.t - b.t);
   const nm = FAM[famOf(sp)].short.toLowerCase();
   if (!allR.length) {
-    sec.appendChild(h('p', 'zp-note', 'No public reports of ' + nm + ' on file within 25 miles. Scores here come from the weather model alone.'));
+    sec.appendChild(h('p', 'zp-note', 'No public reports of ' + nm + ' on file within ' + mi + ' miles. Scores here come from the weather model alone.'));
     sec.appendChild(reportLinks('zp-note', 'Been here? Be the first to report on ', 'p'));
     return;
   }
@@ -896,7 +900,7 @@ function nearbyFinds(host, z, sp) {
   const recent = allR.filter((r) => r.t <= ref && ref - r.t <= 30 * 864e5);
   const before = allR.filter((r) => r.t <= ref);
   const last = before.length ? before[before.length - 1] : null;
-  sec.appendChild(h('p', 'zp-note', fInt(allR.length) + ' reports of ' + nm + ' within 25 miles since 2010' + (blurR.length ? ' (' + blurR.length + ' with locations blurred by the observer)' : '') + '; ' + recent.length + ' in the 30 days before ' + fMD(new Date(ref)) + (last ? ' (latest ' + fMD(new Date(last.t)) + ', ' + last.y + ')' : '') + '.'));
+  sec.appendChild(h('p', 'zp-note', fInt(allR.length) + ' reports of ' + nm + ' within ' + mi + ' miles since 2010' + (R > 40 ? ' (a wider circle than usual, because few reports are on file closer)' : '') + (blurR.length ? ' (' + blurR.length + ' with locations blurred by the observer)' : '') + '; ' + recent.length + ' in the 30 days before ' + fMD(new Date(ref)) + (last ? ' (latest ' + fMD(new Date(last.t)) + ', ' + last.y + ')' : '') + '.'));
   const cnt = d3.range(12).map(() => 0);
   allR.forEach((r) => { cnt[new Date(r.t).getUTCMonth()]++; });
   const mx = Math.max.apply(null, cnt), cur = new Date(ref).getUTCMonth();
