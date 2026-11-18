@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 CACHE_DIR = os.path.join(os.path.dirname(__file__), '..', 'cache')
 FIRES_CACHE = os.path.join(CACHE_DIR, 'fires_cache.json')
 
-BBOX = {"min_lat": 41.9, "max_lat": 44.8, "min_lon": -124.7, "max_lon": -120.6}
+BBOX = {"min_lat": 41.9, "max_lat": 46.3, "min_lon": -124.7, "max_lon": -116.4}   # all of Oregon (was west of -120.6 and south of 44.8)
 
 def ensure_cache_dir():
     if not os.path.exists(CACHE_DIR):

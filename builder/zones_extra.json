@@ -1,5 +1,5 @@
 {
- "_comment": "Extra zones for shrooms.strong.beer (the oregon-mushroom-scout skill's own zones.json is untouched). Centers are general areas, not spots. Sighting counts are GBIF/iNaturalist research-grade records within 40 km, Oregon only, surveyed 2026-11-07. pdx_drive_h is an approximate drive time from downtown Portland.",
+ "_comment": "Extra zones for shrooms.strong.beer (the oregon-mushroom-scout skill's own zones.json is untouched). Centers are general areas, not spots. Sighting counts are GBIF/iNaturalist research-grade records within 40 km, Oregon only, surveyed 2026-11-07. pdx_drive_h is an approximate drive time from downtown Portland. The nine east-side zones added 2026-11-18 sit over the big 2026 conifer burns; their sighting counts are filled on the server.",
  "zones": [
   {
    "id": "mthood_west",
@@ -421,6 +421,189 @@
     "morel": 25,
     "king": 22
    }
+  },
+  {
+   "id": "dufur_badger",
+   "name": "Mt. Hood east foothills / Dufur / Badger Lake / Hwy 35 south",
+   "lat": 45.3,
+   "lon": -121.42,
+   "elev_ft": 3800,
+   "land": "Mt. Hood NF (Barlow RD), private land below the forest - check ownership",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "ponderosa pine and mixed fir on the dry east foothills of Mt. Hood above Dufur and Pine Hollow; the 2026 Grasshopper burn",
+   "pdx_drive_h": 2.0,
+   "regions": [
+    "pdx",
+    "central"
+   ]
+  },
+  {
+   "id": "ashwood_crooked_grassland",
+   "name": "Crooked River Grassland / Ashwood / Gateway",
+   "lat": 44.72,
+   "lon": -121.05,
+   "elev_ft": 3400,
+   "land": "Ochoco NF (Crooked River National Grassland), BLM and private land - check ownership",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "juniper, ponderosa pine and grass on the plateaus east of Lake Billy Chinook; morels only in the pine stringers; the 2026 Akawa Butte and Round Butte burns",
+   "pdx_drive_h": 2.75,
+   "regions": [
+    "central",
+    "east"
+   ]
+  },
+  {
+   "id": "fossil_kinzua",
+   "name": "Fossil / Kinzua / Hwy 19 and 207",
+   "lat": 44.85,
+   "lon": -119.95,
+   "elev_ft": 4200,
+   "land": "Umatilla NF (Heppner RD), BLM and private land - check ownership",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "ponderosa pine and Douglas-fir ridges between Fossil and Kinzua, mostly private ranch land at the low end; the 2026 Crosswhite burn",
+   "pdx_drive_h": 3.75,
+   "regions": [
+    "east"
+   ]
+  },
+  {
+   "id": "ochoco_mitchell",
+   "name": "Ochoco Mountains south / Mitchell / Paulina / Big Summit",
+   "lat": 44.38,
+   "lon": -120.0,
+   "elev_ft": 4800,
+   "land": "Ochoco NF (Paulina RD / Lookout Mountain RD)",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "ponderosa pine and grand fir ridges of the southern Ochocos; the 2026 Shingle, Henry and Coyote burns",
+   "pdx_drive_h": 4.0,
+   "regions": [
+    "central",
+    "east"
+   ]
+  },
+  {
+   "id": "umatilla_tollgate",
+   "name": "Umatilla NF / Hwy 204 / Tollgate / North Fork Umatilla",
+   "lat": 45.72,
+   "lon": -118.2,
+   "elev_ft": 4600,
+   "land": "Umatilla NF (Walla Walla RD)",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "grand fir, Douglas-fir and larch on the Blue Mountain ridges east of Pendleton; the 2026 Hagen burn",
+   "pdx_drive_h": 3.75,
+   "regions": [
+    "east"
+   ]
+  },
+  {
+   "id": "anthony_elkhorns",
+   "name": "Elkhorn Range / Anthony Lakes / Hwy 411",
+   "lat": 44.98,
+   "lon": -118.2,
+   "elev_ft": 5300,
+   "land": "Wallowa-Whitman NF (Whitman RD)",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "lodgepole, larch and mixed fir on the north end of the Elkhorns west of Baker City; the 2026 Anthony burn",
+   "pdx_drive_h": 4.75,
+   "regions": [
+    "east"
+   ]
+  },
+  {
+   "id": "wallowa_joseph",
+   "name": "Wallowa Mountains north / Joseph / Enterprise",
+   "lat": 45.33,
+   "lon": -117.3,
+   "elev_ft": 5000,
+   "land": "Wallowa-Whitman NF (Eagle Cap RD), private land in the valley - check ownership",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "mixed conifer and larch on the north face of the Wallowas above Joseph; the 2026 McCully burn",
+   "pdx_drive_h": 5.5,
+   "regions": [
+    "east"
+   ]
+  },
+  {
+   "id": "malheur_emigrant",
+   "name": "Malheur NF south / north of Burns / Hwy 395",
+   "lat": 43.82,
+   "lon": -119.15,
+   "elev_ft": 5000,
+   "land": "Malheur NF (Emigrant Creek RD), private land below the forest - check ownership",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "ponderosa pine and mixed fir on the south slope of the Blue Mountains above Burns and Hines; the 2026 Second Flat and Egypt burns",
+   "pdx_drive_h": 5.5,
+   "regions": [
+    "east"
+   ]
+  },
+  {
+   "id": "sprague_river_bly",
+   "name": "Sprague River / Bly Mountain / Hwy 140",
+   "lat": 42.45,
+   "lon": -121.5,
+   "elev_ft": 4600,
+   "land": "Fremont-Winema NF (Chiloquin RD), private timberland - check ownership",
+   "side": "east",
+   "coastal": false,
+   "species": [
+    "morel_natural",
+    "morel_burn",
+    "king_spring"
+   ],
+   "habitat": "ponderosa and lodgepole pine east of Chiloquin along the Sprague River; the 2026 Wrights Spring burn",
+   "pdx_drive_h": 5.0,
+   "regions": [
+    "south"
+   ]
   }
  ],
  "regions": {
@@ -429,7 +612,8 @@
   "central": "Central Oregon (east slope)",
   "south": "Southern Cascades and Klamath",
   "sw": "Southwest Oregon",
-  "coast": "Coast and Coast Range"
+  "coast": "Coast and Coast Range",
+  "east": "Eastern Oregon (Ochocos, Blue Mountains, Wallowas)"
  },
  "regions_by_skill_zone": {
   "metolius_greenridge": [

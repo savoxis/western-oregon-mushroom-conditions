@@ -19,7 +19,7 @@ STATIONS_CACHE = os.path.join(CACHE_DIR, 'snotel_stations.json')
 WTEQ_CACHE = os.path.join(CACHE_DIR, 'wteq_cache.json')
 ZONES_FILE = os.path.join(os.path.dirname(__file__), '..', 'references', 'zones.json')
 
-BBOX = {"min_lat": 41.9, "max_lat": 44.8, "min_lon": -124.7, "max_lon": -120.6}
+BBOX = {"min_lat": 41.9, "max_lat": 46.3, "min_lon": -124.7, "max_lon": -116.4}   # all of Oregon (was west of -120.6 and south of 44.8)
 BASE_URL = "https://wcc.sc.egov.usda.gov/awdbRestApi/services/v1"
 
 def ensure_cache_dir():
@@ -73,7 +73,7 @@ def discover_stations():
     """Discover SNOTEL stations in bbox. Cache permanently."""
     # Try permanent cache first
     cache = read_cache(STATIONS_CACHE)
-    if 'stations' in cache:
+    if 'stations' in cache and cache.get('bbox') == BBOX:     # a list saved for an older, smaller box is discovered again
         return cache['stations']
 
     url = (f"{BASE_URL}/stations"
@@ -112,6 +112,7 @@ def discover_stations():
         })
 
     write_cache(STATIONS_CACHE, 'stations', result, permanent=True)
+    write_cache(STATIONS_CACHE, 'bbox', BBOX, permanent=True)
     return result
 
 def haversine(lat1, lon1, lat2, lon2):

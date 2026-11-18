@@ -1,5 +1,5 @@
 {
- "_comment": "Permit additions for the shrooms site only. Text comes from official Forest Service pages fetched 2026-11-07. The skill's permits.md is untouched. Entries with verify=true are shown with 'verify before you go'.",
+ "_comment": "Permit additions for the shrooms site only. Text comes from official Forest Service pages fetched 2026-11-07. The skill's permits.md is untouched. Entries with verify=true are shown with 'verify before you go'. Malheur, Umatilla and Wallowa-Whitman entries come from their own Forest Service permit pages and 2026 mushroom release, read 2026-11-18.",
  "entries": [
   {
    "match": [
@@ -63,6 +63,42 @@
    "verified": "2026-11-07",
    "verify": true,
    "rule": "OSU research forests are managed for teaching and research. Access and any picking rules could not be confirmed online; contact OSU College Forests before picking."
+  },
+  {
+   "match": [
+    "Malheur NF"
+   ],
+   "name": "Malheur NF",
+   "verified": "2026-11-18",
+   "verify": false,
+   "rule": "Personal use: less than 1 gal in Oregon needs no permit and is free; free-use mushrooms cannot be sold, bartered or given away. More than that, or picking to sell (18 and over), needs a commercial permit ($2/day with a 10-day minimum, or $100/year), and commercial picking is banned in wilderness. Carry photo ID. Burned forests: watch for falling snags and check fire closures."
+  },
+  {
+   "match": [
+    "Umatilla NF"
+   ],
+   "name": "Umatilla NF",
+   "verified": "2026-11-18",
+   "verify": false,
+   "rule": "Personal use: less than 1 gal in Oregon needs no permit and is free; free-use mushrooms cannot be sold, bartered or given away. More than that, or picking to sell (18 and over), needs a commercial permit ($2/day with a 10-day minimum, or $100/year), and commercial picking is banned in wilderness. Carry photo ID. Burned forests: watch for falling snags and check fire closures."
+  },
+  {
+   "match": [
+    "Wallowa-Whitman NF"
+   ],
+   "name": "Wallowa-Whitman NF",
+   "verified": "2026-11-18",
+   "verify": false,
+   "rule": "Personal use: less than 1 gal in Oregon needs no permit and is free; free-use mushrooms cannot be sold, bartered or given away. More than that, or picking to sell (18 and over), needs a commercial permit ($2/day with a 10-day minimum, or $100/year), and commercial picking is banned in wilderness, botanical and research areas. Carry photo ID. Burned forests: watch for falling snags and check fire closures."
+  },
+  {
+   "match": [
+    "Ochoco NF"
+   ],
+   "name": "Ochoco NF and Crooked River National Grassland",
+   "verified": "2026-11-18",
+   "verify": true,
+   "rule": "The forest's permit page has no mushroom rules posted right now. Call the Ochoco NF office in Prineville about personal-use limits before you pick, and check fire closures."
   }
  ]
 }

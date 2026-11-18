@@ -20,7 +20,7 @@ ZONES_FILE = os.path.join(os.path.dirname(__file__), '..', 'references', 'zones.
 GEOCODE_CACHE = os.path.join(CACHE_DIR, 'geocode_cache.json')
 ELEV_CACHE = os.path.join(CACHE_DIR, 'elevation_cache.json')
 
-BBOX = {"min_lat": 41.9, "max_lat": 44.8, "min_lon": -124.7, "max_lon": -120.6}
+BBOX = {"min_lat": 41.9, "max_lat": 46.3, "min_lon": -124.7, "max_lon": -116.4}   # all of Oregon (was west of -120.6 and south of 44.8)
 
 def ensure_cache_dir():
     """Create cache directory if missing."""
