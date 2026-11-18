@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://shrooms.strong.beer/sitemap.xml
