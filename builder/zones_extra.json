@@ -487,8 +487,8 @@
   {
    "id": "ochoco_mitchell",
    "name": "Ochoco Mountains south / Mitchell / Paulina / Big Summit",
-   "lat": 44.3,
-   "lon": -120.15,
+   "lat": 44.38,
+   "lon": -120.0,
    "elev_ft": 4800,
    "land": "Ochoco NF (Paulina RD / Lookout Mountain RD)",
    "side": "east",
@@ -548,7 +548,7 @@
   {
    "id": "wallowa_joseph",
    "name": "Wallowa Mountains north / Joseph / Enterprise",
-   "lat": 45.38,
+   "lat": 45.33,
    "lon": -117.3,
    "elev_ft": 5000,
    "land": "Wallowa-Whitman NF (Eagle Cap RD), private land in the valley - check ownership",
