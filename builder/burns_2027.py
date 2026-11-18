@@ -19,7 +19,12 @@ Inputs kept by hand next to this script (burn_pass/):
                                    "checked": "YYYY-MM-DD", "note": "..."}}
     exclude.json    [{"name": "Fire Name", "reason": "..."}]
     conifer.csv     optional; header row with a name column and a column whose header contains
-                    "conifer" (acres). Matched on fire name, case-insensitive.
+                    "conifer" (acres). Matched on fire name, case-insensitive, one row per name.
+                    This file is kept in the repository (builder/burn_pass/) and deployed with the
+                    script; edit it there, not on the server.
+    acres.json      {"Fire Name": {"or_acres": 186809, "source": "..."}}  optional per-fire override of
+                    the Oregon acreage (for fires that cross the state line, where the official
+                    figure should win over the outline estimate). Survives every weekly refresh.
 """
 import argparse, csv, datetime, json, math, os, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 
@@ -284,7 +289,8 @@ def when(v):
         return str(v)[:10]
 
 
-def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres=40, oregon=None):
+def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres=40, oregon=None, acre_overrides=None):
+    over = {norm(k): v for k, v in (acre_overrides or {}).items() if isinstance(v, dict)}
     skip = {norm(x["name"]): x.get("reason", "") for x in exclude if x.get("name")}
     best = {}
     for f in features:
@@ -298,7 +304,7 @@ def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres
         if key in best and best[key]["acres"] >= acres:
             continue                # WFIGS can carry more than one perimeter per fire; keep the largest
         best[key] = {"name": name, "acres": acres, "props": p, "geom": f.get("geometry")}
-    fires, dropped = [], []
+    fires, dropped, applied = [], [], []
     for v in sorted(best.values(), key=lambda x: -x["acres"]):
         n = norm(v["name"])
         if n in skip:
@@ -309,10 +315,15 @@ def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres
             continue
         p = v["props"]
         share = oregon_share(polys, oregon)
+        or_acres = int(round(v["acres"] * share))
+        o = over.get(n)
+        if o and isinstance(o.get("or_acres"), (int, float)) and o["or_acres"] > 0:
+            or_acres = min(int(round(o["or_acres"])), int(round(v["acres"])))      # an official figure wins, but never above the fire's total
+            applied.append(v["name"])
         fires.append({
             "name": v["name"],
             "acres": int(round(v["acres"])),
-            "or_acres": int(round(v["acres"] * share)),
+            "or_acres": or_acres,
             "conifer_acres": conifer.get(n),
             "start": when(prop(p, "attr_FireDiscoveryDateTime")),
             "owner": prop(p, "attr_POOLandownerKind", "attr_POOLandownerCategory"),
@@ -326,6 +337,7 @@ def build(features, year, closures, exclude, conifer, tol=0.0008, min_ring_acres
         "note": "Perimeters only. A burned area is not automatically open, safe or productive.",
         "fires": fires,
         "excluded": len(dropped),
+        "or_acres_overridden": applied,
     }, dropped
 
 
@@ -366,7 +378,10 @@ def main(argv=None):
             break
     if not oregon:
         print("no Oregon outline found: acres outside Oregon are counted in full", file=sys.stderr)
-    out, dropped = build(feats, a.year, closures, exclude, load_conifer(a.conifer), oregon=oregon)
+    overrides = _load_json(os.path.join(PASS_DIR, "acres.json"), {})
+    out, dropped = build(feats, a.year, closures, exclude, load_conifer(a.conifer), oregon=oregon, acre_overrides=overrides)
+    if out["or_acres_overridden"]:
+        print("official Oregon acreage used for: " + ", ".join(out["or_acres_overridden"]), file=sys.stderr)
 
     total = sum(f["acres"] for f in out["fires"])
     or_total = sum(f["or_acres"] for f in out["fires"])

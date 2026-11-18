@@ -90,6 +90,47 @@ class OregonShare(unittest.TestCase):
         self.assertFalse(B.in_polys(-116.2, 43.6, o))        # Boise
 
 
+class Overrides(unittest.TestCase):
+    OR = OregonShare.OR
+
+    def _fires(self, over):
+        f = [feat("BIG GRASS", 100000, circle(-119.0, 44.0, 10), uid="Z"), feat("OTHER", 20000, circle(-120.0, 44.0, 5), uid="Y")]
+        out, _ = B.build(f, 2026, {}, [], {}, oregon=self.OR, acre_overrides=over)
+        return {x["name"]: x for x in out["fires"]}, out
+
+    def test_official_figure_replaces_the_estimate(self):
+        fires, out = self._fires({"Big Grass": {"or_acres": 61234, "source": "x"}})
+        self.assertEqual(fires["Big Grass"]["or_acres"], 61234)
+        self.assertEqual(fires["Big Grass"]["acres"], 100000)
+        self.assertEqual(out["or_acres_overridden"], ["Big Grass"])
+        self.assertEqual(fires["Other"]["or_acres"], 20000)          # untouched
+
+    def test_override_matches_name_loosely_and_is_capped(self):
+        fires, _ = self._fires({"big grass fire": {"or_acres": 999999}})
+        self.assertEqual(fires["Big Grass"]["or_acres"], 100000)     # never above the fire's total
+
+    def test_bad_overrides_are_ignored(self):
+        fires, out = self._fires({"Big Grass": {"or_acres": "lots"}, "Other": {"or_acres": -5}, "Nobody": {"or_acres": 5}})
+        self.assertTrue(47000 < fires["Big Grass"]["or_acres"] < 53000)
+        self.assertEqual(fires["Other"]["or_acres"], 20000)
+        self.assertEqual(out["or_acres_overridden"], [])
+
+    def test_repo_side_tables(self):
+        d = os.path.join(os.path.dirname(HERE), "burn_pass")
+        if not os.path.exists(os.path.join(d, "conifer.csv")):
+            self.skipTest("burn_pass/ not next to the tests")
+        c = B.load_conifer(os.path.join(d, "conifer.csv"))
+        self.assertGreater(len(c), 500)
+        self.assertEqual(c["crosswhite"], 195225)
+        self.assertEqual(c["grasshopper"], 75390)                   # one row per name: the big fire, not a namesake
+        import csv
+        with open(os.path.join(d, "conifer.csv"), newline="") as f:
+            names = [B.norm(r["name"]) for r in csv.DictReader(f)]
+        self.assertEqual(len(names), len(set(names)))
+        ov = json.load(open(os.path.join(d, "acres.json")))
+        self.assertEqual(ov["Big Grass"]["or_acres"], 186809)
+
+
 class Build(unittest.TestCase):
     def setUp(self):
         self.feats = [
