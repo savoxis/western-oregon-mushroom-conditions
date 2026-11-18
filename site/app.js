@@ -72,7 +72,7 @@ function inkOn(color) { return d3.lab(color).l > 64 ? '#14181f' : '#ffffff'; }
 /* ---------- state ---------- */
 const S = {
   tab: 'map', sp: 'all', region: 'all', land: 'all', elev: 'any', minScore: 0, q: '', sort: 'metric', seasonOnly: false, mode: 'live', year: null, doy: null,
-  playing: false, metric: 'score', heat: true, markers: true, layers: false, landMap: true, sight: true, sightWhen: 'season', sightPub: false,
+  playing: false, metric: 'score', heat: true, markers: true, layers: false, landMap: true, sight: true, sightWhen: 'season', sightPub: false, burns: false,
   zone: null, zsp: null,
   fam: 'all', showAll: false, series: null, syear: null, week: null
 };
@@ -343,6 +343,7 @@ function sync() {
   $('#sight-opts').hidden = !S.sight;
   $('#sight-when').value = S.sightWhen;
   $('#opt-sightpub').checked = S.sightPub;
+  $('#opt-burns').checked = S.burns;
   const sl = $('#tm-slider');
   if (S.doy !== null) sl.value = String(S.doy);
   $('#tm-play').classList.toggle('is-on', S.playing);
@@ -591,9 +592,10 @@ dash.draw('map', {
     const lp = lmap.getPane('land');
     lp.style.zIndex = 360; lp.style.pointerEvents = 'none';
     const landLayer = L.tileLayer(LANDTILE, { pane: 'land', maxZoom: 15, opacity: 0.62, attribution: 'Land ownership: BLM Surface Management Agency' });
+    const gBurn = L.layerGroup().addTo(lmap);
     const gSight = L.layerGroup().addTo(lmap);
     const gMark = L.layerGroup().addTo(lmap);
-    const made = { el, lmap, canvas, gMark, gSight, landLayer, rend: L.canvas({ padding: 0.5 }), items: [], grid: [], raf: 0, fitted: false };
+    const made = { el, lmap, canvas, gMark, gSight, gBurn, landLayer, rend: L.canvas({ padding: 0.5 }), items: [], grid: [], raf: 0, fitted: false };
     lmap.on('moveend zoomend resize', () => scheduleHeat(made));
     lmap.on('zoomend', () => { el.classList.toggle('z-hi', lmap.getZoom() >= 9); if (S.sight && SIGHT) drawSightings(made); });
     lmap.on('click', spotEstimate);
@@ -626,6 +628,7 @@ dash.draw('map', {
     bindMarkers(made, M, mapItems(M));
     made.grid = gridItems(M);
     syncLandLayer(made);
+    drawBurns(made);
     drawSightings(made);
     el.classList.toggle('z-hi', made.lmap.getZoom() >= 9);
     scheduleHeat(made);
@@ -795,6 +798,81 @@ function syncLandLayer(made) {
   const has = made.lmap.hasLayer(made.landLayer);
   if (S.landMap && !has) made.landLayer.addTo(made.lmap);
   if (!S.landMap && has) made.lmap.removeLayer(made.landLayer);
+}
+
+/* ---------- 2026 burn scars: free teaser for the 2027 Burn Morel Pass (data from builder/burns_2027.py) ---------- */
+let BURNS = null;
+let burnReq = null;
+const BURN_STATUS = {
+  open: 'Open to the public when last checked',
+  partial: 'Partly closed when last checked',
+  closed: 'Closed when last checked',
+  unknown: 'Closure status not checked yet'
+};
+function loadBurns() {
+  if (burnReq) return burnReq;
+  burnReq = fetch('data/c/burns.json').then((r) => (r.ok ? r.json() : null)).then((d) => {
+    if (!d || !Array.isArray(d.fires)) { burnReq = null; BURNS = { fires: [], failed: true }; }
+    else BURNS = d;
+    if (MAP) drawBurns(MAP);
+    return BURNS;
+  }).catch(() => { burnReq = null; BURNS = { fires: [], failed: true }; if (MAP) drawBurns(MAP); });
+  return burnReq;
+}
+function burnPopup(f) {
+  const box = h('div', 'spot');
+  box.appendChild(h('b', null, (/\b(fire|complex)$/i.test(f.name) ? f.name : f.name + ' Fire') + ', ' + (BURNS.year || 2026)));
+  let line = fInt(f.acres) + ' acres burned';
+  if (f.conifer_acres) line += ', about ' + fInt(f.conifer_acres) + ' of them conifer forest';
+  if (f.start) line += '. Started ' + fMD(new Date(f.start + 'T00:00:00Z')) + '.';
+  box.appendChild(h('div', null, line));
+  const c = f.closure || {};
+  const st = h('div', 'muted small', (BURN_STATUS[c.status] || BURN_STATUS.unknown) + (c.checked ? ' (' + fMD(new Date(c.checked + 'T00:00:00Z')) + ')' : '') + '.');
+  if (c.order_url && /^https:\/\//.test(c.order_url)) {
+    st.appendChild(document.createTextNode(' '));
+    const a = h('a', null, 'Closure order');
+    a.href = c.order_url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    st.appendChild(a);
+  }
+  box.appendChild(st);
+  if (c.note) box.appendChild(h('div', 'muted small', c.note));
+  box.appendChild(h('div', 'muted small', 'Inside the line is not all morel ground: severity, forest type and private land vary a lot. Dead trees fall without warning, worst in wind.'));
+  const more = h('div', 'small');
+  const a = h('a', null, 'Severity, open land and fruiting timing: the 2027 Burn Morel Pass');
+  a.href = 'burn-pass.html';
+  more.appendChild(a);
+  box.appendChild(more);
+  return box;
+}
+function drawBurns(made) {
+  made.gBurn.clearLayers();
+  const note = $('#burn-note');
+  if (!S.burns) { note.hidden = true; return; }
+  note.hidden = false;
+  if (!BURNS) { note.textContent = 'Loading 2026 burns...'; loadBurns(); return; }
+  if (BURNS.failed || !BURNS.fires.length) { note.textContent = 'The 2026 burn layer is not available right now.'; return; }
+  let acres = 0;
+  const bounds = L.latLngBounds([]);
+  BURNS.fires.forEach((f) => {
+    acres += f.acres;
+    const closed = f.closure && f.closure.status === 'closed';
+    const latlngs = f.polys.map((poly) => poly.map((ring) => ring.map((p) => [p[1], p[0]])));
+    const g = L.polygon(latlngs, { renderer: made.rend, color: closed ? '#6b6b6b' : '#a63d14', weight: 1.5, dashArray: closed ? '4 4' : null, fillColor: '#e8743b', fillOpacity: closed ? 0.08 : 0.2, bubblingMouseEvents: false });
+    g.on('click', (ev) => { L.popup({ className: 'spotpop', maxWidth: 280 }).setLatLng(ev.latlng).setContent(burnPopup(f)).openOn(made.lmap); });
+    g.addTo(made.gBurn);
+    bounds.extend(g.getBounds());
+  });
+  note.textContent = fInt(BURNS.fires.length) + ' Oregon fires of ' + (BURNS.year || 2026) + ' over 1,000 acres, ' + fInt(acres) + ' acres in all. Most big burns are east of the Cascades. Burn outlines only: burned does not mean open, safe or productive.';
+  const row = h('div', 'rep');
+  const fit = h('button', 'btn sm', 'Show all burns');
+  fit.type = 'button';
+  fit.addEventListener('click', () => { made.userMoved = true; made.lmap.fitBounds(bounds, { padding: [24, 24] }); });
+  row.appendChild(fit);
+  row.appendChild(document.createTextNode(' '));
+  const a = h('a', null, 'Spring 2027 morel pass');
+  a.href = 'burn-pass.html';
+  row.appendChild(a);
+  note.appendChild(row);
 }
 function nearbyFinds(host, z, sp) {
   const sec = h('div', 'zp-sec');
@@ -2135,6 +2213,7 @@ $('#opt-landmap').addEventListener('change', (e) => { S.landMap = e.target.check
 $('#opt-sight').addEventListener('change', (e) => { S.sight = e.target.checked; sync(); redraw(['map']); });
 $('#sight-when').addEventListener('change', (e) => { S.sightWhen = e.target.value; redraw(['map']); });
 $('#opt-sightpub').addEventListener('change', (e) => { S.sightPub = e.target.checked; redraw(['map']); });
+$('#opt-burns').addEventListener('change', (e) => { S.burns = e.target.checked; sync(); redraw(['map']); });
 $('#layers-btn').addEventListener('click', () => { S.layers = !S.layers; sync(); });
 $('#zoom-in').addEventListener('click', () => { if (MAP) MAP.lmap.zoomIn(); });
 $('#zoom-out').addEventListener('click', () => { if (MAP) MAP.lmap.zoomOut(); });
@@ -2150,5 +2229,6 @@ dash.onData(() => {
 });
 const named = (location.hash || '').slice(1);
 if (named === 'stats') { S.tab = 'stats'; }
+if (named === 'burns') { S.burns = true; }
 sync();
 })();
