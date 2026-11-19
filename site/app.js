@@ -464,7 +464,8 @@ function iconFor(it, selected, hiZoom) {
   const col = valueColor(it.v);
   const rgb = col ? d3.color(col) : null;
   const wrap = document.createElement('div');
-  const dot = h('div', 'mkd' + (it.v === null ? ' off' : '') + (selected ? ' sel' : ''), valueText(it.v) || '-');
+  const evl = it.v !== null && !isWx() ? evidenceLevel(it.z, it.key) : null;
+  const dot = h('div', 'mkd' + (it.v === null ? ' off' : '') + (selected ? ' sel' : '') + (evl ? ' ev-' + evl : ''), valueText(it.v) || '-');
   if (col) { dot.style.background = col; dot.style.color = inkOn(col); }
   wrap.appendChild(dot);
   wrap.appendChild(h('div', 'mkn', it.z.short));
@@ -477,6 +478,8 @@ function tipFor(it) {
   if (it.v === null) box.appendChild(h('div', 'tip-m', S.mode === 'live' ? 'Off-season / not scored' : 'No score on this date'));
   else if (isWx()) box.appendChild(h('div', 'tip-l', METRICS[S.metric].label + ': ' + valueText(it.v) + METRICS[S.metric].unit));
   else box.appendChild(h('div', 'tip-l', (it.key ? FAM[famOf(it.key)].short + ' - ' : '') + BANDS[bandIdx(it.v)].name + ' (' + Math.round(it.v) + ')' + (isOutlook() ? ' in ~' + METRICS[S.metric].outlook + ' days' : '')));
+  const evl = it.v !== null && !isWx() ? evidenceLevel(it.z, it.key) : null;
+  if (evl) box.appendChild(h('div', 'tip-ev ' + evl, evl === 'none' ? 'No field reports nearby: weather model only' : 'Few field reports nearby'));
   return box;
 }
 function bindMarkers(made, M, items) {
@@ -578,6 +581,15 @@ function spotEstimate(ev) {
     if (best.o14[k] !== null && best.o14[k] !== undefined) t += ', ~14 days ' + best.o14[k];
     box.appendChild(h('div', null, t));
   });
+  // where nobody has reported a find near the click, say so under the scores
+  const warn = () => {
+    keys.forEach((k) => {
+      const e2 = evidenceFor(ev.latlng.lat, ev.latlng.lng, SIGHT_KEY[k]);
+      const m = e2 && window.ShroomEvidence.message(e2, FAM[famOf(k)].short.toLowerCase());
+      if (m) box.appendChild(h('div', 'spot-ev ' + e2.level, m.title + '. ' + m.body));
+    });
+  };
+  if (SIGHT) warn(); else loadSightings().then(() => { if (SIGHT) warn(); });
   L.popup({ className: 'spotpop' }).setLatLng(ev.latlng).setContent(box).openOn(MAP.lmap);
 }
 
@@ -650,6 +662,36 @@ const LANDTILE = 'https://gis.blm.gov/arcgis/rest/services/lands/BLM_Natl_SMA_Ca
 const MONTHS1 = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 let SIGHT = null;
 let sightReq = null;
+/* Field evidence (see ShroomEvidence in calcs.js): reports of one mushroom near a place. null until the reports have loaded. */
+const evCache = new Map();
+function evidenceFor(lat, lon, sightKey) {
+  if (!SIGHT || !sightKey || !window.ShroomEvidence) return null;
+  const k = lat + ',' + lon + ',' + sightKey;
+  if (!evCache.has(k)) evCache.set(k, window.ShroomEvidence.check(SIGHT, lat, lon, sightKey));
+  return evCache.get(k);
+}
+// a short tag for a list row or a marker: null when there are enough reports (or they have not loaded yet)
+function evidenceLevel(z, spKey) {
+  const ev = spKey ? evidenceFor(z.lat, z.lon, SIGHT_KEY[spKey]) : null;
+  return ev && ev.level !== 'ok' ? ev.level : null;
+}
+function evidenceTag(z, spKey) {
+  const lv = evidenceLevel(z, spKey);
+  if (!lv) return null;
+  const t = h('span', 'rl-ev ' + lv, lv === 'none' ? 'no field reports' : 'few field reports');
+  t.title = lv === 'none' ? 'No public reports of this mushroom nearby: the score is the weather model alone.' : 'Only a few public reports of this mushroom nearby: the score is mostly the weather model.';
+  return t;
+}
+function evidenceBanner(host, z, sp) {
+  const ev = evidenceFor(z.lat, z.lon, SIGHT_KEY[sp]);
+  const m = ev && window.ShroomEvidence.message(ev, FAM[famOf(sp)].short.toLowerCase());
+  if (!m) return;
+  const box = h('div', 'zp-ev ' + ev.level);
+  box.setAttribute('role', 'note');
+  box.appendChild(h('b', null, m.title));
+  box.appendChild(h('span', null, m.body));
+  host.appendChild(box);
+}
 function loadSightings() {
   if (sightReq) return sightReq;
   sightReq = fetch('data/c/sightings.json').then((r) => (r.ok ? r.json() : null)).then((d) => {
@@ -666,7 +708,8 @@ function loadSightings() {
         return { sp: d.species[r[0]], date: r[1], t, y, doy: Math.round((t - Date.UTC(y, 0, 1)) / 864e5) + 1, lat: r[2], lon: r[3], blur: true };
       })
     };
-    redraw(['map', 'reality']);
+    evCache.clear();
+    redraw(['map', 'reality', 'ranklist']);
     if (S.zone) redraw(['zpanel']);
     return SIGHT;
   }).catch(() => { sightReq = null; return null; });
@@ -1000,6 +1043,8 @@ dash.draw('ranklist', (el) => {
         const mid = h('span', 'rl-m');
         mid.appendChild(h('span', 'rl-name', p.it.z.short));
         mid.appendChild(h('span', 'rl-sub', FAM[famOf(p.it.key)].short + ' - ' + (p.i === 0 ? 'today' : fDow(p.d.t) + ' ' + fMD(p.d.t))));
+        const evt = evidenceTag(p.it.z, p.it.key);
+        if (evt) mid.appendChild(evt);
         b.appendChild(mid);
         b.appendChild(h('span', 'rl-d', driveLabel(p.it.z)));
         b.addEventListener('click', () => selectZone(p.it.z.id, true));
@@ -1024,6 +1069,8 @@ dash.draw('ranklist', (el) => {
     else if (isWx()) sub = METRICS[S.metric].label + METRICS[S.metric].unit;
     else sub = FAM[famOf(it.key)].short + ' - ' + BANDS[bandIdx(it.v)].name.toLowerCase();
     mid.appendChild(h('span', 'rl-sub', sub));
+    const evt = it.v !== null && !isWx() ? evidenceTag(it.z, it.key) : null;
+    if (evt) mid.appendChild(evt);
     b.appendChild(mid);
     b.appendChild(h('span', 'rl-d', driveLabel(it.z)));
     b.addEventListener('click', () => selectZone(it.z.id, true));
@@ -1252,6 +1299,8 @@ dash.draw('zpanel', (el) => {
   }
   sc.appendChild(sd);
   el.appendChild(sc);
+  evidenceBanner(el, z, sp);   // scores with no field reports behind them say so, right under the number (season odds and history are model-only too)
+  if (!SIGHT) loadSightings();
 
   if (S.mode === 'live' && row && (row.reasons || row.negatives)) {
     const ul = h('ul', 'zp-why');

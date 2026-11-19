@@ -326,3 +326,37 @@ dash.calc('kpis', {
     }];
   }
 });
+
+/* Field evidence: how many public reports (GBIF, mostly iNaturalist) of one mushroom lie near a place, so the page can say
+   plainly when a score has nothing but the weather model behind it. Same circle the "Past finds nearby" section uses:
+   40 km, widened to 80 km when fewer than 15 reports fall inside it. Plain functions with no DOM, so tests can load this
+   file with a stub `dash` and call them.
+   sight: { rows: [{ sp, lat, lon }], blur: [{ sp, lat, lon }] } (blurred-location reports count: they are real finds)
+   level: 'none' (no reports in the circle), 'thin' (1 to 4) or 'ok' (5 or more). */
+window.ShroomEvidence = (function () {
+  const NEAR_KM = 40, FAR_KM = 80, SPARSE_BELOW = 15, THIN_BELOW = 5;
+  const distKm = (lat, lon, r) => Math.hypot((r.lon - lon) * Math.cos(lat * Math.PI / 180) * 111.32, (r.lat - lat) * 111.2);
+  const within = (set, key, lat, lon, km) => (set || []).filter((r) => r.sp === key && distKm(lat, lon, r) <= km);
+  function check(sight, lat, lon, key) {
+    let km = NEAR_KM;
+    let rows = within(sight && sight.rows, key, lat, lon, km), blur = within(sight && sight.blur, key, lat, lon, km);
+    if (rows.length + blur.length < SPARSE_BELOW) {
+      km = FAR_KM;
+      rows = within(sight && sight.rows, key, lat, lon, km);
+      blur = within(sight && sight.blur, key, lat, lon, km);
+    }
+    const n = rows.length + blur.length;
+    return { km: km, mi: Math.round(km / 1.609), n: n, rows: rows, blur: blur, level: n === 0 ? 'none' : (n < THIN_BELOW ? 'thin' : 'ok') };
+  }
+  // { title, body } for a place with little or no evidence; null when there is enough. name: the mushroom, lower case.
+  function message(ev, name) {
+    if (!ev || ev.level === 'ok') return null;
+    if (ev.level === 'none') {
+      return { title: 'No field evidence',
+        body: 'No public reports of ' + name + ' on file within ' + ev.mi + ' miles since 2010. Scores here come from the weather model alone and have never been checked against a real find nearby. Treat them as unverified.' };
+    }
+    return { title: 'Thin field evidence',
+      body: 'Only ' + ev.n + (ev.n === 1 ? ' public report' : ' public reports') + ' of ' + name + ' within ' + ev.mi + ' miles since 2010. Scores here are mostly the weather model: treat them with caution.' };
+  }
+  return { check: check, message: message, NEAR_KM: NEAR_KM, FAR_KM: FAR_KM, SPARSE_BELOW: SPARSE_BELOW, THIN_BELOW: THIN_BELOW };
+})();
