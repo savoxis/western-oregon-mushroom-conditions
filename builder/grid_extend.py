@@ -19,6 +19,8 @@ options:
   --min-forest PCT   forest share a spot needs (default 30)
   --spacing KM       lattice spacing (default: measured from the current points)
   --skip ID,ID       leave out these point ids (as the dry run prints them)
+  --all-land         whole-state mode: no forest test, and keep spots outside every species band (their weather history is
+                     stored for later; the dry run marks which points the model can score today). Water-level spots are still dropped.
   --force            write even while listed zones are still backfilling (normally refused, so zones fill first)
 Rollback: copy the data/grid.json.bak-* file this prints back over data/grid.json. Stdlib only."""
 import json, math, os, sys, time, urllib.parse, urllib.request
@@ -193,9 +195,12 @@ def scorable(p, bands):
     return any(lo <= p["elev_ft"] <= hi for b in known for lo, hi in b.values())
 
 
-def plan(points, oregon, km, min_forest, evc_fn=landfire_evc, elev_fn=elevations_ft, bands=None, skip=()):
+def plan(points, oregon, km, min_forest, evc_fn=landfire_evc, elev_fn=elevations_ft, bands=None, skip=(), all_land=False):
     """Returns (new points, rejected spots with reasons). Network goes only through evc_fn and elev_fn.
-    Also dropped: spots at water level (10 ft or less), spots above or below every band of their species, and ids in skip."""
+    Also dropped: spots at water level (10 ft or less), spots above or below every band of their species, and ids in skip.
+    all_land=True is the whole-state mode: no forest test (LANDFIRE gaps count as 0%) and spots outside every species band
+    are kept, because their weather history is worth storing for later (a changing climate, a future model). Each new point
+    carries _scorable: whether the model can score it at its elevation today. Water-level spots and skip ids are still dropped."""
     bands = load_bands() if bands is None else bands
     cands = [(la, lo) for la, lo in lattice(oregon, points[0], km)
              if min(hav(la, lo, p["lat"], p["lon"]) for p in points) > 0.75 * km]
@@ -203,7 +208,9 @@ def plan(points, oregon, km, min_forest, evc_fn=landfire_evc, elev_fn=elevations
     share = forest_share(evc_fn(rings) if rings else [], len(cands))
     keep, rejected = [], []
     for (la, lo), f in zip(cands, share):
-        if f is None:
+        if all_land:
+            keep.append((la, lo, 0 if f is None else f))
+        elif f is None:
             rejected.append((la, lo, "no LANDFIRE answer"))
         elif f < min_forest:
             rejected.append((la, lo, "%d%% forest" % f))
@@ -214,11 +221,12 @@ def plan(points, oregon, km, min_forest, evc_fn=landfire_evc, elev_fn=elevations
     for (la, lo, f), e in zip(keep, elevs):
         p = new_point(la, lo, e, points)
         p["_forest_pct"] = f
+        p["_scorable"] = scorable(p, bands)
         if p["id"] in skip:
             rejected.append((la, lo, "skipped by hand"))
         elif e <= 10:
             rejected.append((la, lo, "at water level"))
-        elif not scorable(p, bands):
+        elif not p["_scorable"] and not all_land:
             rejected.append((la, lo, "%d ft is outside every species band" % e))
         else:
             new.append(p)
@@ -260,6 +268,7 @@ def main(argv=None):
     write, force = "--write" in argv, "--force" in argv
     min_forest = int(argv[argv.index("--min-forest") + 1]) if "--min-forest" in argv else 30
     skip = set(argv[argv.index("--skip") + 1].split(",")) if "--skip" in argv else set()
+    all_land = "--all-land" in argv
     doc = load(GRID)
     points = doc["points"]
     if len(points) < 3:
@@ -273,17 +282,23 @@ def main(argv=None):
         return 1
     ids = {p["id"] for p in points}
     print("current grid: %d points, spacing %.1f km" % (len(points), km))
-    new, rejected = plan(points, oregon, km, min_forest, skip=skip)
+    new, rejected = plan(points, oregon, km, min_forest, skip=skip, all_land=all_land)
     new = [p for p in new if p["id"] not in ids]
     years = list(range(FIRST_YEAR, date.today().year + 1))
     calls = len(new) * len(years) * LITE_COST
-    print("%d new forest points (min %d%% forest); %d spots left blank" % (len(new), min_forest, len(rejected)))
+    if all_land:
+        now_ok = sum(1 for p in new if p["_scorable"])
+        print("%d new points over the whole state (no forest test): %d the model can score today, %d outside every species band "
+              "(weather history only); %d spots dropped" % (len(new), now_ok, len(new) - now_ok, len(rejected)))
+    else:
+        print("%d new forest points (min %d%% forest); %d spots left blank" % (len(new), min_forest, len(rejected)))
     for la, lo, why in rejected:
         if "forest" not in why and "LANDFIRE" not in why:
             print("  dropped %.3f,%.3f: %s" % (la, lo, why))
-    print("%-18s %8s %9s %7s %-6s %s" % ("id", "lat", "lon", "elev_ft", "side", "forest"))
+    print("%-18s %8s %9s %7s %-6s %-6s %s" % ("id", "lat", "lon", "elev_ft", "side", "forest", "scorable" if all_land else ""))
     for p in sorted(new, key=lambda p: (-p["lat"], p["lon"])):
-        print("%-18s %8.3f %9.3f %7d %-6s %d%%" % (p["id"], p["lat"], p["lon"], p["elev_ft"], p.get("side"), p["_forest_pct"]))
+        print("%-18s %8.3f %9.3f %7d %-6s %-6s %s" % (p["id"], p["lat"], p["lon"], p["elev_ft"], p.get("side"), "%d%%" % p["_forest_pct"],
+                                                      ("yes" if p["_scorable"] else "no") if all_land else ""))
     print("backfill: about %d weighted free-archive calls (%d years), roughly %d days at %d a day; live scoring costs nothing "
           "extra off-season" % (calls, len(years), math.ceil(calls / DAILY_CAP) if calls else 0, DAILY_CAP))
     if not write:

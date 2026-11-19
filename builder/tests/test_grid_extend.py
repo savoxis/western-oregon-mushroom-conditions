@@ -86,7 +86,7 @@ class Points(unittest.TestCase):
     def test_fields_copied_from_an_east_side_point(self):
         keys = set(self.g[0])
         for p in self.new:
-            self.assertEqual(set(p) - {"_forest_pct"}, keys, p["id"])
+            self.assertEqual({k for k in p if not k.startswith("_")}, keys, p["id"])
             self.assertTrue(p["id"].startswith("g_"))
             self.assertEqual(p["side"], "east")
             self.assertFalse(p["coastal"])
@@ -154,6 +154,66 @@ class Drops(unittest.TestCase):
         self.assertTrue(G.scorable({"species": ["chanterelle", "king_fall"], "elev_ft": 140}, b))
 
 
+class AllLand(unittest.TestCase):
+    """--all-land: the whole state, forest or not, in band or not (weather history is worth keeping for later)."""
+    BANDS = Drops.BANDS
+
+    def plan(self, elev=4500, evc=None, **kw):
+        g = western_grid(SQUARE)
+        evc = evc or forest_east_of(-119.0)
+        return g, G.plan(g, SQUARE, 35, 30, evc_fn=evc, elev_fn=lambda s: [elev] * len(s), bands=self.BANDS, all_land=True, **kw)
+
+    def test_keeps_spots_without_forest(self):
+        g, (new, rej) = self.plan()
+        forest_only, _ = G.plan(g, SQUARE, 35, 30, evc_fn=forest_east_of(-119.0), elev_fn=lambda s: [4500] * len(s), bands=self.BANDS)
+        self.assertGreater(len(new), len(forest_only))
+        self.assertTrue(any(p["_forest_pct"] == 0 for p in new))
+        self.assertEqual([r for r in rej if "forest" in r[2]], [])
+
+    def test_landfire_gaps_are_kept_as_zero_forest(self):
+        _, (new, rej) = self.plan(evc=lambda s: [None] * len(s))
+        self.assertTrue(new)
+        self.assertTrue(all(p["_forest_pct"] == 0 for p in new))
+        self.assertEqual(rej, [])
+
+    def test_out_of_band_is_kept_and_flagged(self):
+        g, (new, _) = self.plan(elev=7470)
+        self.assertTrue(new)
+        self.assertTrue(all(p["_scorable"] is False for p in new))
+        dropped, _ = G.plan(g, SQUARE, 35, 30, evc_fn=forest_east_of(-200), elev_fn=lambda s: [7470] * len(s), bands=self.BANDS)
+        self.assertEqual(dropped, [])                   # the normal mode still drops them
+
+    def test_in_band_is_flagged_scorable(self):
+        _, (new, _) = self.plan(elev=4500)
+        self.assertTrue(new and all(p["_scorable"] is True for p in new))
+
+    def test_water_level_and_skip_still_apply(self):
+        _, (new, rej) = self.plan(elev=0)
+        self.assertEqual(new, [])
+        self.assertTrue(all(why == "at water level" for _, _, why in rej))
+        _, (all_new, _) = self.plan()
+        drop = {all_new[0]["id"]}
+        _, (new, rej) = self.plan(skip=drop)
+        self.assertEqual(len(new), len(all_new) - 1)
+        self.assertEqual(sum(1 for _, _, why in rej if why == "skipped by hand"), 1)
+
+    def test_every_part_of_the_state_ends_up_near_a_point(self):
+        g, (new, _) = self.plan()
+        pts = g + new
+        worst = 0.0
+        for la, lo in G.lattice(SQUARE, {"lat": 42.013, "lon": -123.987}, 12):
+            worst = max(worst, min(G.hav(la, lo, p["lat"], p["lon"]) for p in pts))
+        self.assertLess(worst, 51)                      # half a lattice cell plus the 0.75 x spacing rule
+
+    def test_the_extra_marker_is_not_written(self):
+        g, (new, _) = self.plan()
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "grid.json")
+            put(path, {"points": g})
+            G.write_grid({"points": g}, new, path)
+            self.assertFalse(any(k.startswith("_") for p in get(path)["points"] for k in p))
+
+
 class Write(unittest.TestCase):
     def test_backup_then_append(self):
         g = western_grid(SQUARE)
@@ -166,7 +226,7 @@ class Write(unittest.TestCase):
             out = get(path)
             self.assertEqual(out["other"], 1)
             self.assertEqual(len(out["points"]), len(g) + len(new))
-            self.assertFalse(any("_forest_pct" in p for p in out["points"]))
+            self.assertFalse(any(k.startswith("_") for p in out["points"] for k in p))
 
     def test_waits_for_listed_zones(self):
         with tempfile.TemporaryDirectory() as d:
