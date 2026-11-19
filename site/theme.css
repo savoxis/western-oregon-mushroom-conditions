@@ -11,8 +11,10 @@
 body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);font-weight:500} #dash-root{padding:0 var(--dash-gutter,16px)}
 select.dash-select{appearance:auto;padding:6px 8px;border:1px solid rgba(var(--ph-rgb),.4);border-radius:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-mono);font-size:12.5px}
 /* screen effects: static scanlines and a vignette over everything. Nothing sweeps across the page. */
-body::before{content:'';position:fixed;inset:0;z-index:2000;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px)}
-body::after{content:'';position:fixed;inset:0;z-index:1999;pointer-events:none;background:radial-gradient(ellipse at 50% 40%,transparent 62%,rgba(0,0,0,.55))}
+body::before{content:'';position:fixed;inset:0;z-index:2000;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px);transition:opacity .2s}
+body::after{content:'';position:fixed;inset:0;z-index:1999;pointer-events:none;background:radial-gradient(ellipse at 50% 40%,transparent 62%,rgba(0,0,0,.55));transition:opacity .2s}
+/* a past-find photo is open: show it without the scanlines and vignette (set by app.js) */
+body.photo-clear::before,body.photo-clear::after{opacity:0}
 /* static pages (sources, burn pass) */
 body > main h1{font-family:var(--font-anthropic-serif);font-weight:400;text-transform:uppercase;font-size:clamp(1.05rem,3.4vw,1.5rem);line-height:1.25;text-shadow:0 0 22px rgba(var(--ph-rgb),.45)}
 body > main a{color:var(--ph)}

@@ -602,6 +602,8 @@ dash.draw('map', {
     const gMark = L.layerGroup().addTo(lmap);
     const made = { el, lmap, canvas, gMark, gSight, gBurn, landLayer, rend: L.canvas({ padding: 0.5 }), items: [], grid: [], raf: 0, fitted: false };
     lmap.on('moveend zoomend resize', () => scheduleHeat(made));
+    lmap.on('popupopen', (e) => { const n = e.popup.getElement(); photoFx(!!(n && n.querySelector('.spot-photo'))); });
+    lmap.on('popupclose', () => photoFx(false));
     lmap.on('zoomend', () => { el.classList.toggle('z-hi', lmap.getZoom() >= 9); if (S.sight && SIGHT) drawSightings(made); });
     lmap.on('click', spotEstimate);
     lmap.setView([44.2, -122.3], 7);
@@ -697,7 +699,7 @@ function loadPhoto(id) {
       if (!imgs.length) return null;
       const lic = (imgs[0].license.match(/licenses\/([a-z-]+)\/([\d.]+)/) || []);
       return {
-        src: imgs[0].identifier.replace(/\/(original|large|medium|small|square)\.(\w+)$/, '/medium.$2'),
+        src: imgs[0].identifier.replace(/\/(original|large|medium|small|square)\.(\w+)$/, '/large.$2'),
         by: imgs[0].creator || imgs[0].rightsHolder || '',
         lic: lic[1] ? 'CC ' + lic[1].toUpperCase() + ' ' + lic[2] : /publicdomain\/zero/.test(imgs[0].license) ? 'CC0' : 'CC',
         more: imgs.length - 1
@@ -751,6 +753,8 @@ function reportLinks(cls, lead, tag) {
   s.appendChild(document.createTextNode('. Finds with a photo license and a public location show up here in a week or two.'));
   return s;
 }
+/* While a past-find photo is on screen, the scanline and vignette overlay is switched off so the photo is seen as taken. */
+function photoFx(on) { document.body.classList.toggle('photo-clear', !!on); }
 function sightPopup(r, popup) {
   const box = h('div', 'spot');
   box.appendChild(h('b', null, FAM[famOf(r.sp)].short + ', ' + fMD(new Date(r.t)) + ', ' + r.y));
@@ -764,12 +768,12 @@ function sightPopup(r, popup) {
   box.appendChild(a);
   box.appendChild(h('div', 'muted small', 'A photo report is not proof the spot is open to picking.'));
   loadPhoto(r.id).then((p) => {
-    if (!p) { ph.remove(); if (popup) popup.update(); return; }
+    if (!p) { ph.remove(); photoFx(false); if (popup) popup.update(); return; }
     const img = h('img');
     img.alt = FAM[famOf(r.sp)].short + ' reported near here, ' + r.y;
     img.referrerPolicy = 'no-referrer';
     img.addEventListener('load', () => { ph.textContent = ''; ph.className = 'spot-photo'; const l = h('a'); l.href = rec; l.target = '_blank'; l.rel = 'noopener noreferrer'; l.appendChild(img); ph.appendChild(l); ph.appendChild(h('div', 'muted small', 'Photo' + (p.by ? ' by ' + p.by : '') + ', ' + p.lic + (p.more > 0 ? ' (+' + p.more + ' more on the report)' : ''))); if (popup) popup.update(); });
-    img.addEventListener('error', () => { ph.remove(); if (popup) popup.update(); });
+    img.addEventListener('error', () => { ph.remove(); photoFx(false); if (popup) popup.update(); });
     img.src = p.src;
   });
   return box;
@@ -789,7 +793,7 @@ function drawSightings(made) {
     if (fresh) rec++;
     const col = FAM[famOf(r.sp)].color;
     const m = L.circleMarker([r.lat, r.lon], { renderer: made.rend, radius: hi ? 6 : 4.5, weight: fresh ? 2 : 1, color: fresh ? '#111' : '#fff', fillColor: col, fillOpacity: 0.88, bubblingMouseEvents: false });
-    m.on('click', (ev) => { const pop = L.popup({ className: 'spotpop', maxWidth: 270, autoPanPaddingTopLeft: [20, 64], autoPanPaddingBottomRight: [20, 20] }).setLatLng(ev.latlng); pop.setContent(sightPopup(r, pop)).openOn(made.lmap); });
+    m.on('click', (ev) => { const pop = L.popup({ className: 'spotpop', maxWidth: 340, autoPanPaddingTopLeft: [20, 64], autoPanPaddingBottomRight: [20, 20] }).setLatLng(ev.latlng); pop.setContent(sightPopup(r, pop)).openOn(made.lmap); });
     m.addTo(made.gSight);
   });
   const when = S.sightWhen === 'recent' ? 'in the 30 days before ' + fMD(new Date(ref)) : S.sightWhen === 'season' ? 'within 3 weeks of ' + fMD(new Date(ref)) + ' in any year since 2010' : 'since 2010';

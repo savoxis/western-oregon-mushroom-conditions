@@ -268,7 +268,7 @@
 .spotpop .leaflet-popup-content-wrapper, .spotpop .leaflet-popup-tip { background: var(--sh-panel); color: var(--color-fg); }
 .spotpop .leaflet-popup-content { margin: 10px 12px; font-size: 12.5px; line-height: 1.45; }
 .spot-photo { margin: 6px 0 4px; min-height: 18px; }
-.spot-photo img { display: block; width: 100%; max-width: 246px; max-height: 220px; object-fit: cover; border-radius: 6px; background: var(--sh-panel); }
+.spot-photo img { display: block; width: 100%; max-width: 316px; max-height: 340px; object-fit: contain; border-radius: 6px; background: var(--sh-panel); }
 .spot { display: grid; gap: 4px; }
 .leaflet-control-attribution { font-size: 10px; }
 .zpanel { bottom: 30px; }
