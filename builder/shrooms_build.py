@@ -161,6 +161,23 @@ def prune_series(series):
     return {k: v for k, v in series.items() if has_data(v)}
 
 
+DRIVE_STEP_H = 0.25
+
+
+def drive_time(z, extra, extras_cfg):
+    """(hours, estimated) for the drive from downtown Portland. A zone with a hand-entered pdx_drive_h keeps it. Otherwise
+    approximate road miles (drive_road_miles, else straight line x 1.35) at drive_avg_mph, to the nearest quarter hour.
+    Every zone gets a time, so the page can show and sort one comparable number."""
+    h = (extra or {}).get("pdx_drive_h")
+    if h:
+        return float(h), False
+    mph = float(extras_cfg.get("drive_avg_mph") or 55)
+    mi = (extras_cfg.get("drive_road_miles") or {}).get(z["id"])
+    if not mi:
+        mi = haversine_km(PDX[0], PDX[1], z["lat"], z["lon"]) * 0.621371 * 1.35
+    return max(DRIVE_STEP_H, round(mi / mph / DRIVE_STEP_H) * DRIVE_STEP_H), True
+
+
 def build_zones(reg, zones, perms, extras_cfg, perm_extras, series):
     """zones.json. Species are listed only when the model can ever score them in that zone (non-empty hindcast series)."""
     out = []
@@ -184,7 +201,8 @@ def build_zones(reg, zones, perms, extras_cfg, perm_extras, series):
             "species": [{"key": k, "display": reg["species"][k]["display"]} for k in keys],
             "permit": permit_for(z, perms, perm_extras),
             "pdx_km": round(haversine_km(PDX[0], PDX[1], z["lat"], z["lon"])),
-            "pdx_drive_h": x.get("pdx_drive_h"),
+            "pdx_drive_h": drive_time(z, x, extras_cfg)[0],
+            "pdx_drive_est": drive_time(z, x, extras_cfg)[1],
             "regions": x.get("regions") or by_skill.get(z["id"], []),
             "sightings": x.get("sightings"),
         })
@@ -784,9 +802,10 @@ def season_rain(zone, con, mi):
     return {"daily": {"time": times, "precipitation_sum": pr}}
 
 
-def forecast_scores(reg, zone, sp_keys, w, month, days=7, con=None):
+def forecast_scores(reg, zone, sp_keys, w, month, days=7, con=None, raw_out=None):
     """Scores for today and the next days-1 days, from the same inputs the live card uses (merged_inputs: the skill's cached forecast,
-    past-day rain from ERA5 where available). Day 0 reproduces the live score. {} on any problem."""
+    past-day rain from ERA5 where available). Day 0 reproduces the live score. {} on any problem.
+    raw_out, when given, is filled with the same scores before rounding (species -> list), for tie-breaks only."""
     try:
         mi = merged_inputs(zone, con)
         if not mi:
@@ -794,6 +813,8 @@ def forecast_scores(reg, zone, sp_keys, w, month, days=7, con=None):
         dates, precip, tmin, tmax, soil_t, soil_m, base = (mi["dates"], mi["precip"], mi["tmin"], mi["tmax"], mi["soil_t"],
                                                            mi["soil_m"], mi["base"])
         out = {k: [] for k in sp_keys}
+        if raw_out is not None:
+            raw_out.update({k: [] for k in sp_keys})
         arch = w.get("archive_data") or {}
         for off in range(days):
             i = base + off
@@ -819,6 +840,8 @@ def forecast_scores(reg, zone, sp_keys, w, month, days=7, con=None):
             for k in sp_keys:
                 r = sc.score_species(reg_for(reg, zone), k, zone, day_loc.month if off else month, f)
                 out[k].append(None if r["label"] == "gated out" else r["score"])
+                if raw_out is not None:
+                    raw_out[k].append(None if r["label"] == "gated out" else r.get("score_raw"))
         return out
     except Exception as exc:
         log("warn: forecast scores %s: %s" % (zone.get("id"), exc))
@@ -865,16 +888,18 @@ def build_live(reg, points, con=None, burns=True):
                     r = sc.score_species(reg_for(reg, z), k, z, month, w)
                     if r["label"] == "gated out":
                         continue
-                    entry["species"][k] = {"score": r["score"], "label": r["label"].split(" - ")[0], "reasons": r["reasons"][:4],
-                                           "negatives": r["negatives"][:2], "confidence": r["confidence"]}
+                    entry["species"][k] = {"score": r["score"], "score_raw": r.get("score_raw"), "label": r["label"].split(" - ")[0],
+                                           "reasons": r["reasons"][:4], "negatives": r["negatives"][:2], "confidence": r["confidence"]}
                     rows.append((today, z["id"], k, r["score"], r["label"].split(" - ")[0], w.get("soil_t_7d_mean"),
                                  w.get("precip_14d"), json.dumps(r["reasons"]), json.dumps(r["negatives"]),
                                  str(r["confidence"]), now.isoformat(timespec="seconds")))
-                fcs = forecast_scores(reg, z, [k for k in sp if k in entry["species"]], w, month, con=con)
+                fcs_raw = {}
+                fcs = forecast_scores(reg, z, [k for k in sp if k in entry["species"]], w, month, con=con, raw_out=fcs_raw)
                 for k, arr in fcs.items():
                     if arr and arr[0] is not None and abs(arr[0] - entry["species"][k]["score"]) > 2:
                         log("note: forecast day-0 score differs from live for %s %s: %s vs %s" % (z["id"], k, arr[0], entry["species"][k]["score"]))
                     entry["species"][k]["fc"] = arr
+                    entry["species"][k]["fc_raw"] = fcs_raw.get(k)
                 if fcs:
                     entry["fc_start"] = datetime.now(TZ).strftime("%F")
             time.sleep(0.4)
@@ -1148,7 +1173,7 @@ def export_compact():
         zrows.append({"id": z["id"], "name": z["name"], "lat": z["lat"], "lon": z["lon"], "elev_ft": z["elev_ft"], "side": z.get("side"),
                       "land": z.get("land", ""), "habitat": z.get("habitat", ""), "permit": (z.get("permit") or {}).get("text", ""),
                       "permit_verify": bool((z.get("permit") or {}).get("verify_before_you_go")), "pdx_km": z.get("pdx_km"),
-                      "pdx_drive_h": z.get("pdx_drive_h"), "regions": ",".join(z.get("regions") or []),
+                      "pdx_drive_h": z.get("pdx_drive_h"), "pdx_drive_est": bool(z.get("pdx_drive_est")), "regions": ",".join(z.get("regions") or []),
                       "species": ",".join(s["key"] for s in z["species"])})
     atomic_write(out + "/zones.json", zrows)
 
@@ -1163,7 +1188,9 @@ def export_compact():
             row = {"zone": z["id"], "species": s["key"], "display": s["display"], "family": fam(s["key"]),
                    "rain_era5_through": lz.get("rain_era5_through"),
                    "fc_start": lz.get("fc_start") if fcv else None, "fc": ",".join("" if v is None else str(v) for v in fcv),
-                   "score": r["score"] if r else None, "label": r["label"] if r else "off-season",
+                   "score": r["score"] if r else None, "score_raw": r.get("score_raw") if r else None,
+                   "fc_raw": ",".join("" if v is None else str(v) for v in ((r or {}).get("fc_raw") or [])),
+                   "label": r["label"] if r else "off-season",
                    "confidence": r.get("confidence") if r else None,
                    "reasons": " | ".join(r["reasons"]) if r else "", "negatives": " | ".join(r["negatives"]) if r else "",
                    "rain_10d_in": fc.get("rain_10d_in"), "hi_low_f": fc.get("daily_high_lowest_f"), "hi_high_f": fc.get("daily_high_highest_f")}

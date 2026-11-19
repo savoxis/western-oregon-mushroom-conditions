@@ -1,6 +1,67 @@
 /* Stats models for Oregon Mushroom Conditions.
    Each calc works only from its inputs (dataset or calc rows) and constants inside it. */
 
+/* One ranking for the whole page: the headline, "Best days this week" and the "Right now" list all use cmp(), so a tie
+   gives the same zone first everywhere. Higher score before rounding wins; then the shorter drive from Portland; then name.
+   Plain functions with no DOM, so tests can load this file with a stub `dash` and call them. */
+window.ShroomRank = (function () {
+  const driveH = (z) => (z && typeof z.pdx_drive_h === 'number' ? z.pdx_drive_h : 99);
+  const nameOf = (z) => (z && (z.short || z.name)) || '';
+  // a, b: { raw, z }. raw is the score before rounding (or the shown value when there is no unrounded one).
+  function cmp(a, b) {
+    return (b.raw - a.raw) || (driveH(a.z) - driveH(b.z)) || nameOf(a.z).localeCompare(nameOf(b.z));
+  }
+  // today's score before rounding; the rounded score when the build has no unrounded one
+  function rawScore(row) {
+    if (!row) return null;
+    return typeof row.score_raw === 'number' ? row.score_raw : row.score;
+  }
+  // forecast day i of a live row, before rounding when available
+  function rawDay(row, i) {
+    const f = row && row.fc_raw ? String(row.fc_raw).split(',')[i] : undefined;
+    if (f !== undefined && f !== '' && !isNaN(+f)) return +f;
+    const g = row && row.fc ? String(row.fc).split(',')[i] : undefined;
+    return g === undefined || g === '' ? null : +g;
+  }
+  function list(names) {
+    return names.length < 2 ? names.join('') : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+  }
+  // zones: [{ short, pdx_drive_h, best: live row with species, score, score_raw }]. speciesWord(key) gives "chanterelle".
+  function headline(zones, speciesWord) {
+    const lead = zones.filter((z) => z.best && z.best.score >= 60).map((z) => ({ z, row: z.best, raw: rawScore(z.best) })).sort(cmp);
+    if (!lead.length) return 'No zone is in prime shape right now.';
+    const top = lead[0].row.score;
+    const tied = lead.filter((x) => x.row.score === top);
+    const sp = (x) => speciesWord(x.row.species);
+    let txt = lead.length + (lead.length === 1 ? ' zone is' : ' zones are') + ' in prime shape right now. ';
+    if (tied.length === 1) return txt + nameOf(tied[0].z) + ' leads: ' + sp(tied[0]) + ' at ' + top + '.';
+    if (tied.length >= 4) return txt + tied.length + ' zones tie at ' + top + ', led by ' + nameOf(tied[0].z) + ' (' + sp(tied[0]) + ').';
+    const names = tied.map((x) => nameOf(x.z));
+    if (tied.every((x) => sp(x) === sp(tied[0]))) return txt + list(names) + ' lead: ' + sp(tied[0]) + ' at ' + top + '.';
+    return txt + list(tied.map((x) => nameOf(x.z) + ' (' + sp(x) + ')')) + ' lead at ' + top + '.';
+  }
+  // items: [{ z, key, row }], getWeek(item) -> [{ t, v, raw }] forecast days or null. Returns the pairs that reach prime
+  // (60+) this week, each at its best day, best first.
+  function bestDays(items, getWeek) {
+    const picks = [];
+    items.forEach((it) => {
+      const wk = getWeek(it);
+      if (!wk) return;
+      const bd = wk.reduce((a, d) => (d.v !== null && (a === null || (d.raw === undefined ? d.v : d.raw) > (a.raw === undefined ? a.v : a.raw)) ? d : a), null);
+      if (bd && bd.v >= 60) picks.push({ it, d: bd, i: wk.indexOf(bd), raw: bd.raw === undefined ? bd.v : bd.raw });
+    });
+    return picks.sort((a, b) => cmp({ raw: a.raw, z: a.it.z }, { raw: b.raw, z: b.it.z }));
+  }
+  // items: [{ z, v }] for the "Right now" list (v is null for an off-season zone, which goes last); rawOf(item) is the value to compare.
+  function rankItems(items, rawOf) {
+    return items.slice().sort((a, b) => {
+      if ((a.v === null) !== (b.v === null)) return a.v === null ? 1 : -1;
+      return cmp({ raw: rawOf(a), z: a.z }, { raw: rawOf(b), z: b.z });
+    });
+  }
+  return { cmp, rawScore, rawDay, headline, bestDays, rankItems, driveH };
+})();
+
 dash.calc('series_year', {
   title: 'Season stats by zone, mushroom and year',
   description: 'For each zone and mushroom in each year: days at prime (score 60+) and go-now (80+), first and last prime day, the peak day, and the best score in each week of the year.',
@@ -260,7 +321,7 @@ dash.calc('kpis', {
       zones: zones.length, series_with_history: nSeries, series_core: nCore,
       year_first: done[0].year, year_last: done[done.length - 1].year,
       best_year: best.year, best_year_days: best.prime_days,
-      busy_week_doy: (bw - 1) * 7 + 1, busy_week_zones: Math.round(tot[bw] * 10) / 10,
+      busy_week_doy: (bw - 1) * 7 + 1, busy_week_zones: Math.round(tot[bw]),
       prime_now: vals.filter((v) => v >= 60).length, go_now: vals.filter((v) => v >= 80).length
     }];
   }

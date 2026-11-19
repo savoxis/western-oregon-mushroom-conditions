@@ -23,10 +23,13 @@ NOTE = "Written by an AI model from the numbers on this site. It can be wrong; t
 SYSTEM = (
     "You write a short nightly conditions brief for a public Oregon mushroom-forecast website. "
     "Use ONLY the data in the user message. Do not invent places, trailheads, numbers, dates or weather. "
-    "Do not give identification, edibility or safety-to-eat advice. Do not promise mushrooms: scores are likelihoods "
+    "Do not give identification, edibility or safety-to-eat advice. Do not promise mushrooms: scores are estimates "
     "from a weather model. Plain text only, no markdown, no lists, no emoji. Maximum 110 words, 2 short paragraphs: "
     "(1) where conditions look best right now and why, citing 2-3 of the supplied numbers (soil temperature, rain, "
-    "humidity, soil moisture); (2) what the 10-day forecast changes. If nothing scores above 'marginal', say so plainly."
+    "humidity, soil moisture); (2) what the 10-day forecast changes. If nothing scores above 'marginal', say so plainly. "
+    "Write in plain, everyday words, the way you would tell a friend. Never use the word 'likelihood' or 'likelihoods'. "
+    "Use whole numbers only (round any number you quote; do not add decimals). Put a unit on every number: F for "
+    "temperature, percent for humidity and soil moisture, inches for rain, and points or 'out of 100' for a score."
 )
 
 
@@ -53,18 +56,30 @@ def _digest(live, zones, con):
     lines = ["Date: %s" % datetime.now().strftime("%Y-%m-%d"), "Top zone x species scores (0-100):"]
     for score, zid, sp, label, fc in rows[:8]:
         w = wx.get(zid, {})
-        lines.append("- %s | %s | score %s (%s) | latest day: soil temp %s F, soil moisture %s, humidity %s%%, vpd %s kPa | "
-                     "10-day forecast rain %s in, daily highs %s-%s F" % (
+        # every number is rounded here, before the model sees it, so it cannot echo false precision:
+        # whole degrees and whole percent (soil moisture is a fraction in the database, shown as percent), tenths of an inch
+        lines.append("- %s | %s | score %s out of 100 (%s) | latest day: soil temperature %s F, soil moisture %s percent, "
+                     "humidity %s percent, air dryness %s kPa | 10-day forecast: %s inches of rain, daily highs %s to %s F" % (
                          names.get(zid, zid), sp, score, label,
-                         _r(w.get("soil_temp_f")), _r(w.get("soil_moisture"), 2), _r(w.get("rh_mean_pct")), _r(w.get("vpd_kpa"), 2),
-                         fc.get("rain_10d_in"), fc.get("daily_high_lowest_f"), fc.get("daily_high_highest_f")))
+                         _whole(w.get("soil_temp_f")), _whole(_pct(w.get("soil_moisture"))), _whole(w.get("rh_mean_pct")),
+                         _tenth(w.get("vpd_kpa")), _tenth(fc.get("rain_10d_in")),
+                         _whole(fc.get("daily_high_lowest_f")), _whole(fc.get("daily_high_highest_f"))))
     n_on = sum(1 for r in rows if r[0] >= 60)
     lines.append("Zone x species combos scoring 60 or more: %d of %d in season." % (n_on, len(rows)))
     return "\n".join(lines), rows
 
 
-def _r(v, n=0):
-    return "n/a" if v is None else round(v, n)
+def _whole(v):
+    """A whole number (an int, so it prints without a decimal point), or 'unknown'."""
+    return "unknown" if v is None else int(round(v))
+
+
+def _tenth(v):
+    return "unknown" if v is None else round(float(v), 1)
+
+
+def _pct(fraction):
+    return None if fraction is None else fraction * 100
 
 
 def make_brief(live, zones, con, log, force=False):

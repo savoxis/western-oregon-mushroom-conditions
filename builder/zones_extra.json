@@ -1,5 +1,8 @@
 {
  "_comment": "Extra zones for shrooms.strong.beer (the oregon-mushroom-scout skill's own zones.json is untouched). Centers are general areas, not spots. Sighting counts are GBIF/iNaturalist research-grade records within 40 km, Oregon only, surveyed 2026-11-07. pdx_drive_h is an approximate drive time from downtown Portland. The nine east-side zones added 2026-11-18 sit over the big 2026 conifer burns; their sighting counts are filled on the server.",
+ "drive_comment": "Zones with no pdx_drive_h get an estimated drive time from downtown Portland: approximate road miles by the main highway route (drive_road_miles) at drive_avg_mph, rounded to the nearest quarter hour, and shown with a ~ on the page. A zone with neither falls back to straight-line miles x 1.35.",
+ "drive_avg_mph": 55,
+ "drive_road_miles": {"metolius_greenridge": 140, "santiam_pass": 128, "mckenzie_west": 150, "cascade_lakes": 195, "newberry_lapine": 190, "crescent_odell": 180, "chemult_walker": 235, "diamond_lemolo": 250, "n_umpqua": 221, "prospect_unioncreek": 300, "klamath_westside": 300, "ashland_applegate": 285, "illinois_valley": 323, "south_coast": 320, "dunes_reedsport": 180},
  "zones": [
   {
    "id": "mthood_west",

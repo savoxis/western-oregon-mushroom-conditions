@@ -45,7 +45,7 @@ function fcWeek(row) {
   if (vals.length < 2) return null;
   const t0 = Date.parse(row.fc_start + 'T00:00:00Z');
   if (!isFinite(t0)) return null;
-  return vals.map((v, i) => ({ t: new Date(t0 + i * 864e5), v: v }));
+  return vals.map((v, i) => ({ t: new Date(t0 + i * 864e5), v: v, raw: v === null ? null : window.ShroomRank.rawDay(row, i) }));
 }
 const fMon = d3.utcFormat('%b');
 const dDate = (doy, y) => new Date(Date.UTC(y || 2024, 0, doy));
@@ -62,6 +62,11 @@ function h(tag, cls, text) {
   return e;
 }
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+/* The one distance the list, the panel and the "Distance from Portland" sort all use: drive time, with a ~ when it is an estimate. */
+function driveLabel(z) {
+  if (z.pdx_drive_h) return (z.pdx_drive_est ? '~' : '') + hours(z.pdx_drive_h);
+  return fInt(Math.round(z.pdx_km * 0.621)) + ' mi';
+}
 function hours(x) {
   if (x === null || x === undefined || x === '') return null;
   const m = Math.round(+x * 60), hh = Math.floor(m / 60), mm = m % 60;
@@ -103,7 +108,7 @@ function model() {
   d.live.forEach((r) => { if (zById[r.zone]) zById[r.zone].rows.push(r); });
   d.weather.forEach((r) => { if (zById[r.zone]) zById[r.zone].w = r; });
   zones.forEach((z) => {
-    z.best = z.rows.filter((r) => r.score !== null).sort((a, b) => b.score - a.score)[0] || null;
+    z.best = z.rows.filter((r) => r.score !== null).sort((a, b) => window.ShroomRank.rawScore(b) - window.ShroomRank.rawScore(a))[0] || null;
   });
   const hist = new Map();
   d.history.forEach((r) => {
@@ -960,31 +965,25 @@ dash.draw('legend', (el) => {
   el.appendChild(off);
 });
 
+/* the value a ranking compares: today's score before rounding for the live score view, otherwise the value shown */
+const rankRaw = (it) => (it.v !== null && S.mode === 'live' && !isWx() && !isOutlook() && it.row ? window.ShroomRank.rawScore(it.row) : (it.v === null ? 0 : it.v));
+
 dash.draw('ranklist', (el) => {
   const M = model();
   el.replaceChildren();
   if (!M) { el.appendChild(h('p', 'muted pad', '-')); return; }
-  const items = mapItems(M).sort((a, b) => {
-    if (S.sort === 'name') return a.z.short.localeCompare(b.z.short);
-    if (S.sort === 'pdx') return a.z.pdx_km - b.z.pdx_km;
-    if ((a.v === null) !== (b.v === null)) return a.v === null ? 1 : -1;
-    return (b.v || 0) - (a.v || 0) || a.z.short.localeCompare(b.z.short);
-  });
+  let items = mapItems(M);
+  if (S.sort === 'name') items.sort((a, b) => a.z.short.localeCompare(b.z.short));
+  else if (S.sort === 'pdx') items.sort((a, b) => (window.ShroomRank.driveH(a.z) - window.ShroomRank.driveH(b.z)) || (a.z.pdx_km - b.z.pdx_km) || a.z.short.localeCompare(b.z.short));
+  else items = window.ShroomRank.rankItems(items, rankRaw);
   const scored = items.filter((i) => i.v !== null).length;
   const title = S.mode === 'live' ? 'Right now' : 'On ' + doyStr(S.doy, S.year) + ', ' + S.year;
   const head = h('div', 'rl-h');
   head.appendChild(h('span', 'rl-t', title));
   head.appendChild(h('span', 'rl-n', scored + ' scored of ' + items.length + ' zones'));
   if (S.mode === 'live' && !isWx()) {                     // best days this week, from the forecast-scored rows
-    const picks = [];
-    items.forEach((it) => {
-      if (it.v === null || !it.key) return;
-      const wk = fcWeek(it.z.rows.filter((r) => r.species === it.key)[0]);
-      if (!wk) return;
-      const bd = wk.reduce((a, d) => (d.v !== null && (a === null || d.v > a.v) ? d : a), null);
-      if (bd && bd.v >= 60) picks.push({ it: it, d: bd, i: wk.indexOf(bd) });
-    });
-    picks.sort((a, b) => b.d.v - a.d.v || a.d.t - b.d.t || (a.it.z.pdx_km || 0) - (b.it.z.pdx_km || 0));
+    const picks = window.ShroomRank.bestDays(items.filter((it) => it.v !== null && it.key),
+      (it) => fcWeek(it.z.rows.filter((r) => r.species === it.key)[0]));
     if (picks.length) {
       const card = h('div', 'rl-wk');
       card.appendChild(h('h4', null, 'Best days this week'));
@@ -998,8 +997,7 @@ dash.draw('ranklist', (el) => {
         mid.appendChild(h('span', 'rl-name', p.it.z.short));
         mid.appendChild(h('span', 'rl-sub', FAM[famOf(p.it.key)].short + ' - ' + (p.i === 0 ? 'today' : fDow(p.d.t) + ' ' + fMD(p.d.t))));
         b.appendChild(mid);
-        const dist = p.it.z.pdx_drive_h ? hours(p.it.z.pdx_drive_h) : null;
-        b.appendChild(h('span', 'rl-d', dist ? dist : fInt(Math.round(p.it.z.pdx_km * 0.621)) + ' mi'));
+        b.appendChild(h('span', 'rl-d', driveLabel(p.it.z)));
         b.addEventListener('click', () => selectZone(p.it.z.id, true));
         card.appendChild(b);
       });
@@ -1023,8 +1021,7 @@ dash.draw('ranklist', (el) => {
     else sub = FAM[famOf(it.key)].short + ' - ' + BANDS[bandIdx(it.v)].name.toLowerCase();
     mid.appendChild(h('span', 'rl-sub', sub));
     b.appendChild(mid);
-    const dist = it.z.pdx_drive_h ? hours(it.z.pdx_drive_h) : null;
-    b.appendChild(h('span', 'rl-d', dist ? dist : fInt(Math.round(it.z.pdx_km * 0.621)) + ' mi'));
+    b.appendChild(h('span', 'rl-d', driveLabel(it.z)));
     b.addEventListener('click', () => selectZone(it.z.id, true));
     ul.appendChild(b);
   });
@@ -1052,15 +1049,8 @@ dash.draw('tm-year', (sel) => {
 dash.draw('takeaway', (el) => {
   const M = model();
   if (!M) { el.textContent = '-'; return; }
-  const zs = M.zones.filter((z) => z.best && z.best.score >= 60).sort((a, b) => b.best.score - a.best.score);
   const when = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(M.asOf);
-  let txt;
-  if (zs.length) {
-    const t = zs[0];
-    txt = zs.length + (zs.length === 1 ? ' zone is' : ' zones are') + ' in prime shape right now. ' + t.short + ' leads: ' + FAM[famOf(t.best.species)].short.toLowerCase() + ' at ' + t.best.score + '.';
-  } else {
-    txt = 'No zone is in prime shape right now.';
-  }
+  const txt = window.ShroomRank.headline(M.zones, (k) => FAM[famOf(k)].short.toLowerCase());
   el.textContent = txt + ' Scores as of ' + when + ' Pacific.';
 });
 
@@ -1359,7 +1349,7 @@ dash.draw('zpanel', (el) => {
   const sec3 = h('div', 'zp-sec');
   sec3.appendChild(h('h4', null, 'Access and habitat'));
   sec3.appendChild(h('p', 'zp-note', cap(z.habitat) + '.'));
-  const dist = z.pdx_drive_h ? '~' + hours(z.pdx_drive_h) + ' drive from Portland' : fInt(Math.round(z.pdx_km * 0.621)) + ' miles from Portland (straight line)';
+  const dist = z.pdx_drive_h ? (z.pdx_drive_est ? '' : '~') + driveLabel(z) + ' drive from Portland' : fInt(Math.round(z.pdx_km * 0.621)) + ' miles from Portland (straight line)';
   sec3.appendChild(h('p', 'zp-note', dist + '.'));
   const det = h('details', 'zp-permit');
   det.appendChild(h('summary', null, z.permit_verify ? 'Permit rules (verify before you go)' : 'Permit rules'));
@@ -1381,6 +1371,11 @@ dash.draw('kpi', (el) => {
   if (d.status !== 'ok' || !d.data || !d.data.length) { el.textContent = '-'; return; }
   const v = d.data[0][el.dataset.field];
   const f = el.dataset.fmt;
+  if (f === 'allrec') {                       // "all" when every series has the full record, else the count
+    const all = d.data[0].series_with_history;
+    el.textContent = v === null || v === undefined ? '-' : v === all ? 'all' : fInt(v);
+    return;
+  }
   el.textContent = v === null || v === undefined ? '-' : f === 'md' ? doyStr(v) : f === 'int' ? fInt(v) : String(v);
 });
 
@@ -1670,7 +1665,7 @@ dash.draw('reality', (el) => {
   const vt = h('div', 'rc-val');
   vt.appendChild(h('b', null, RC_VERDICT[fam]));
   vt.appendChild(h('span', null, v.rr === null ? 'Too few reports for a ratio.' : 'On days when other mushrooms were being reported nearby, ' + nm.toLowerCase() + 's were reported ' + v.rr.toFixed(1) + ' times as often on prime days (60+) as on low-score days (95% range ' + v.rr_ci[0].toFixed(1) + ' to ' + v.rr_ci[1].toFixed(1) + '; 1.0 means no difference).'));
-  vt.appendChild(h('span', 'muted', v.find_days + ' report-days in ' + v.zones + ' zones. Does this year beat other years on the same date? ' + (v.yswap >= 55 && v.yswap_ci[0] > 50 ? 'Yes.' : 'No evidence (' + v.yswap.toFixed(0) + ' on a scale where 50 means none).')));
+  vt.appendChild(h('span', 'muted', v.find_days + ' report-days in ' + v.zones + ' zones. Does this year beat other years on the same date? ' + (v.yswap >= 55 && v.yswap_ci[0] > 50 ? 'Yes.' : 'No clear evidence: this year scores about the same as other years on the same date.')));
   sec2.appendChild(vt);
   sec2.appendChild(h('p', 'zp-note', 'Counted only on days when other mushrooms were reported nearby, so days with more people out looking do not look better by themselves. See the sources page for the method and limits.'));
   el.appendChild(sec2);

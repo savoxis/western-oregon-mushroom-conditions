@@ -339,6 +339,7 @@ def score_species(registry, species_key, zone, month, weather, fires_data=None):
         'zone': zone['id'],
         'species': species_key,
         'score': int(round(score)),
+        'score_raw': round(float(score), 2),   # the same score before rounding; used only to break ties between equal rounded scores
         'label': label,
         'reasons': reasons,
         'negatives': negatives,
