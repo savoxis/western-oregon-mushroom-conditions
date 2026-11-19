@@ -72,7 +72,7 @@ function inkOn(color) { return d3.lab(color).l > 64 ? '#14181f' : '#ffffff'; }
 /* ---------- state ---------- */
 const S = {
   tab: 'map', sp: 'all', region: 'all', land: 'all', elev: 'any', minScore: 0, q: '', sort: 'metric', seasonOnly: false, mode: 'live', year: null, doy: null,
-  playing: false, metric: 'score', heat: true, markers: true, layers: false, landMap: true, sight: true, sightWhen: 'season', sightPub: false, burns: false,
+  playing: false, metric: 'score', heat: true, markers: true, layers: false, landMap: false, sight: true, sightWhen: 'season', sightPub: false, burns: false,
   zone: null, zsp: null,
   fam: 'all', showAll: false, series: null, syear: null, week: null
 };
