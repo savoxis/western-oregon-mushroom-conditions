@@ -34,6 +34,8 @@ Scores estimate fruiting conditions, not what is in a basket. Never eat a wild m
 | `site/` | `/opt/shrooms/site/` | served read-only; `site/data/` is generated except the three static analysis files kept here |
 | `deploy/` | see [deploy/README.md](deploy/README.md) | cron, web server, failover and config templates |
 
+Search and sharing: every page has a canonical URL and Open Graph and Twitter card tags with a 1200x630 card image (`site/og.png`); the home page also carries JSON-LD (Organization, WebSite, WebApplication). `robots.txt` allows everything and `sitemap.xml` lists the three public pages. The web server caches fonts, icons and the card image for a week.
+
 Python 3.10+, standard library only (no pip installs). The page has no build step.
 
 ## Tests
