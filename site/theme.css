@@ -1,5 +1,21 @@
-:root{--color-fg:#16181d;--color-bg:#ffffff;--color-panel:#f6f7f9;--color-border-line:#e1e4ea;--color-fg-muted:#667085;--cds-radius:10px;--cds-pad-xs:6px;--cds-pad-sm:10px;--cds-pad-md:14px;--cds-pad-lg:18px;--cds-gap-sm:10px;--cds-gap-md:16px;--cds-gap-lg:24px;--cds-font-size-caption:12.5px;--cds-font-size-body:14.5px;--cds-shadow-popover:0 8px 30px rgba(0,0,0,.14);--cds-dur-slow:300ms;--cds-ease-out:cubic-bezier(.2,.7,.2,1);--font-anthropic-sans:system-ui,-apple-system,"Segoe UI",sans-serif;--font-anthropic-serif:Georgia,serif}
-@media(prefers-color-scheme:dark){:root{--color-fg:#eceef2;--color-bg:#16181d;--color-panel:#1e2128;--color-border-line:#303540;--color-fg-muted:#9aa3b2}}
-html[data-theme=dark]{--color-fg:#eceef2;--color-bg:#16181d;--color-panel:#1e2128;--color-border-line:#303540;--color-fg-muted:#9aa3b2}
-body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif)} #dash-root{padding:0 var(--dash-gutter,16px)}
-select.dash-select{appearance:auto;padding:6px 8px;border:1px solid var(--color-border-line);border-radius:8px;background:var(--color-bg)}
+/* Shared by every page: fonts, colour tokens, base type and the screen effects. Dark only (a ship terminal:
+   phosphor on black, one alarm colour). The three fonts are self-hosted in fonts/ (SIL Open Font License,
+   see fonts/README.txt) because the content security policy allows no outside fonts. */
+@font-face{font-family:'Michroma';font-weight:400 700;font-display:swap;src:url(fonts/michroma-400.woff2) format('woff2')}
+@font-face{font-family:'Chakra Petch';font-weight:400 500;font-display:swap;src:url(fonts/chakra-petch-500.woff2) format('woff2')}
+@font-face{font-family:'Chakra Petch';font-weight:600 700;font-display:swap;src:url(fonts/chakra-petch-600.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-weight:400;font-display:swap;src:url(fonts/ibm-plex-mono-400.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-weight:500;font-display:swap;src:url(fonts/ibm-plex-mono-500.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-weight:600 700;font-display:swap;src:url(fonts/ibm-plex-mono-600.woff2) format('woff2')}
+:root{color-scheme:dark;--color-fg:#e6fff0;--color-bg:#050806;--color-panel:#09110d;--color-border-line:#1f4a33;--color-fg-muted:#78bb98;--ph:#6dffa8;--ph-rgb:109,255,168;--red:#ff4a2b;--red-rgb:255,74,43;--amber:#ffc233;--amber-rgb:255,194,51;--cds-radius:2px;--cds-pad-xs:6px;--cds-pad-sm:10px;--cds-pad-md:14px;--cds-pad-lg:18px;--cds-gap-sm:10px;--cds-gap-md:16px;--cds-gap-lg:24px;--cds-font-size-caption:12.5px;--cds-font-size-body:14.5px;--cds-shadow-popover:0 8px 30px rgba(0,0,0,.65),0 0 0 1px rgba(109,255,168,.16);--cds-dur-slow:300ms;--cds-ease-out:cubic-bezier(.2,.7,.2,1);--font-anthropic-sans:'Chakra Petch',system-ui,-apple-system,"Segoe UI",sans-serif;--font-anthropic-serif:'Michroma','Eurostile','Microgramma D Extended','Bank Gothic',system-ui,sans-serif;--font-mono:'IBM Plex Mono',ui-monospace,Consolas,'Courier New',monospace}
+body{margin:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-anthropic-sans, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif);font-weight:500} #dash-root{padding:0 var(--dash-gutter,16px)}
+select.dash-select{appearance:auto;padding:6px 8px;border:1px solid rgba(var(--ph-rgb),.4);border-radius:0;background:var(--color-bg);color:var(--color-fg);font-family:var(--font-mono);font-size:12.5px}
+/* screen effects: static scanlines and a vignette over everything. Nothing sweeps across the page. */
+body::before{content:'';position:fixed;inset:0;z-index:2000;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.22) 0 1px,transparent 1px 3px)}
+body::after{content:'';position:fixed;inset:0;z-index:1999;pointer-events:none;background:radial-gradient(ellipse at 50% 40%,transparent 62%,rgba(0,0,0,.55))}
+/* static pages (sources, burn pass) */
+body > main h1{font-family:var(--font-anthropic-serif);font-weight:400;text-transform:uppercase;font-size:clamp(1.05rem,3.4vw,1.5rem);line-height:1.25;text-shadow:0 0 22px rgba(var(--ph-rgb),.45)}
+body > main a{color:var(--ph)}
+body > main a:hover{color:var(--color-fg)}
+body > main th{font-family:var(--font-mono)}
+body .buy{border-radius:0;background:var(--red);color:#050806;text-transform:uppercase;letter-spacing:.1em}

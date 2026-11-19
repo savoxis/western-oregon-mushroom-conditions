@@ -381,3 +381,127 @@
 .rc-ht i { display: block; height: 100%; border-radius: 4px; }
 .rc-hl { color: var(--sh-muted); }
 .rc-hv { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ======================================================================
+   Yeyland-Wutani terminal skin. Tokens and fonts live in theme.css; this layer restyles the components.
+   Dark only. Square corners, phosphor borders, mono labels, Michroma for big numbers. No sweeping effects.
+   ====================================================================== */
+.sh {
+  --sh-accent: var(--ph);
+  --sh-sea: #030705;
+  --sh-land: color-mix(in srgb, var(--ph) 9%, var(--color-bg));
+  --sh-land2: color-mix(in srgb, var(--ph) 4%, var(--color-bg));
+  --cell-empty: rgba(var(--ph-rgb), .07);
+  --mono: var(--font-mono);
+  font-weight: 500;
+}
+.sh a { color: var(--ph); }
+.sh a:hover { color: var(--color-fg); }
+.sh button:focus-visible, .sh a:focus-visible, .sh summary:focus-visible, .sh select:focus-visible, .sh input:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+
+/* header */
+.sh-head { border-bottom: 1px solid rgba(var(--ph-rgb), .3); margin-bottom: var(--cds-gap-sm); padding-top: 12px; }
+.sh-corp { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; color: var(--ph); }
+.sh-corp-name { font: 400 12px var(--font-anthropic-serif); letter-spacing: .22em; color: var(--color-fg); }
+.sh-corp-tag { font: 500 10px var(--mono); letter-spacing: .22em; color: var(--color-fg-muted); }
+.sh-sys { display: inline-flex; align-items: center; gap: 7px; margin-left: 14px; font: 500 10px var(--mono); color: var(--color-fg-muted); white-space: nowrap; }
+.sh-dot { width: 7px; height: 7px; background: var(--ph); box-shadow: 0 0 10px var(--ph); animation: sh-blink 1s steps(2, start) infinite; }
+.sh h1 { font-size: clamp(1.05rem, 2.8vw, 1.75rem); text-transform: uppercase; line-height: 1.2; letter-spacing: .005em; color: var(--color-fg); text-shadow: 0 0 26px rgba(var(--ph-rgb), .5); animation: sh-flick 7s infinite; }
+.sh-sub { font: 400 12.5px/1.6 var(--mono); color: var(--color-fg-muted); }
+.sh-sub::before { content: '> '; color: var(--ph); }
+
+/* controls */
+.seg { border-radius: 0; padding: 2px; background: transparent; border-color: rgba(var(--ph-rgb), .4); }
+.seg button { border-radius: 0; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--color-fg-muted); min-height: 32px; }
+.seg button:hover { color: var(--color-fg); }
+.seg button.is-on, .chip.is-on, .btn.is-on, .pill.is-on { background: var(--ph); color: #050806; border-color: var(--ph); }
+.chip { border-radius: 0; background: transparent; border-color: rgba(var(--ph-rgb), .3); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.chip:hover, .btn:hover { border-color: var(--ph); background: rgba(var(--ph-rgb), .1); }
+.chip.is-on:hover, .btn.is-on:hover { background: var(--color-fg); }
+.chip-dot { box-shadow: 0 0 0 1px rgba(0, 0, 0, .5); }
+.btn, .pill, .icon-btn { border-radius: 0; background: rgba(5, 8, 6, .94); border-color: rgba(var(--ph-rgb), .45); color: var(--ph); font-weight: 600; letter-spacing: .06em; }
+.pill { text-transform: uppercase; }
+.icon-btn:hover, .pill:hover { background: rgba(var(--ph-rgb), .14); border-color: var(--ph); }
+.fld { font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; font-size: 11px; }
+.fld select, .fld input { text-transform: none; letter-spacing: 0; }
+.fld input[type="search"] { border-radius: 0; border-color: rgba(var(--ph-rgb), .4); font-family: var(--mono); }
+.chk { font-weight: 500; }
+.beer { border-radius: 0; background: transparent; color: var(--amber); border-color: var(--amber); text-transform: uppercase; letter-spacing: .1em; }
+.beer:hover { background: rgba(var(--amber-rgb), .14); color: #fff3dd; }
+
+/* panels: square, phosphor-edged, with corner brackets on the big ones */
+.mapwrap, .pop, .legend, .tm, .zpanel, .brief, .rl-i, .rl-wk, .kpi, .card, .st, .key, .zp-tile, .zp-ot, .zp-dry,
+.rc-kpi, .rc-val, .leaflet-tooltip.mtip, .tip, .leaflet-popup-content-wrapper, .wl-i { border-radius: 0; }
+.mapwrap { border-color: rgba(var(--ph-rgb), .45); background: #030504; }
+.mapwrap::before, .mapwrap::after, .card::before, .card::after, .kpi::before, .kpi::after, .brief::before, .brief::after {
+  content: ''; position: absolute; width: 16px; height: 16px; border: 2px solid var(--ph); pointer-events: none; z-index: 9;
+}
+.mapwrap::before, .card::before, .kpi::before, .brief::before { top: -1px; left: -1px; border-right: 0; border-bottom: 0; }
+.mapwrap::after, .card::after, .kpi::after, .brief::after { bottom: -1px; right: -1px; border-left: 0; border-top: 0; }
+.card, .kpi, .brief { position: relative; }
+.card, .kpi, .st, .brief { background: rgba(var(--ph-rgb), .035); border-color: rgba(var(--ph-rgb), .3); }
+.card::before, .card::after, .kpi::before, .kpi::after, .brief::before, .brief::after { width: 12px; height: 12px; z-index: 1; }
+.zpanel { border-radius: 0; border-color: rgba(var(--ph-rgb), .5); background: color-mix(in srgb, var(--color-panel) 96%, transparent); }
+.zp-grab { border-radius: 0; background: var(--ph); }
+.pop, .legend, .tm, .key { border-color: rgba(var(--ph-rgb), .4); }
+
+/* type */
+.kpi-l, .st-l, .zp-tl, .rl-t, .rl-n, .kpi-s, .st-s, .zp-os, .tr-s, .rc-pl, .rc-rl { font-family: var(--mono); }
+.kpi-l, .st-l, .zp-tl, .rl-t { text-transform: uppercase; letter-spacing: .12em; font-size: 10.5px; }
+.kpi-v, .st-v, .zp-on, .zp-num, .tr-d, .zp-name { font-family: var(--font-anthropic-serif); }
+.kpi-v { font-size: clamp(1.1rem, 2vw, 1.45rem); color: var(--color-fg); }
+.st-v { font-size: 1.05rem; }
+.zp-name { font-size: 1.05rem; line-height: 1.25; }
+.zp-num { font-size: 2.6rem; text-shadow: 0 0 22px currentColor; }
+.zp-on { font-size: 1.35rem; }
+.tr-d { font-size: 1rem; }
+.card h2, .ex-h, .card h3 { color: var(--color-fg); }
+.card h2, .ex-h { font-size: 1.1rem; }
+.zp-sec h4, .rl-wk h4 { font-family: var(--mono); letter-spacing: .14em; color: var(--color-fg-muted); }
+.zp-why li.pos::before { color: var(--ph); }
+.zp-why li.neg::before { color: var(--red); }
+.zpanel .btn { background: var(--ph); color: #050806; border-color: var(--ph); text-transform: uppercase; letter-spacing: .14em; }
+.zpanel .btn:hover { background: var(--color-fg); }
+.zpanel .btn.alt { background: transparent; color: var(--ph); border-color: rgba(var(--ph-rgb), .45); }
+.zp-dry { background: rgba(var(--amber-rgb), .1); border-color: rgba(var(--amber-rgb), .5); }
+.zp-os.flag { color: var(--amber); }
+
+/* the list beside the map */
+.rl-i { background: rgba(var(--ph-rgb), .03); border-color: rgba(var(--ph-rgb), .2); }
+.rl-i:hover { background: rgba(var(--ph-rgb), .08); border-color: rgba(var(--ph-rgb), .5); }
+.rl-i.sel { border-color: var(--ph); background: rgba(var(--ph-rgb), .14); box-shadow: 0 0 0 1px var(--ph), 0 0 20px rgba(var(--ph-rgb), .22); }
+.rl-b { font-family: var(--mono); box-shadow: 0 0 12px rgba(0, 0, 0, .6); }
+.wl-i:hover, .wl-i.sel { background: rgba(var(--ph-rgb), .1); }
+.wl-i.sel { border-color: rgba(var(--ph-rgb), .5); }
+.wl-bar, .wl-fill, .rc-hb, .rc-ht { border-radius: 0; }
+
+/* tonight's brief as a terminal readout */
+.brief summary { font: 600 11.5px var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ph); }
+.brief summary::before { content: '> '; }
+.brief p { font-family: var(--mono); font-size: 12px; line-height: 1.7; color: var(--color-fg); }
+
+/* the map: base tiles recoloured to a dark green monochrome, everything else on top keeps its own colours */
+.leaflet-tile-pane { filter: invert(1) grayscale(1) brightness(.72) contrast(1.25) sepia(1) hue-rotate(88deg) saturate(1.7); }
+.map.leaflet-container { background: #030705; }
+.leaflet-control-attribution { background: rgba(5, 8, 6, .82) !important; color: var(--color-fg-muted) !important; }
+.leaflet-control-attribution a { color: var(--ph) !important; }
+.mkd { border-color: var(--color-fg); box-shadow: 0 0 0 1px rgba(0, 0, 0, .7), 0 0 14px rgba(0, 0, 0, .7); font-family: var(--mono); }
+.mkd.off { background: rgba(5, 8, 6, .86); color: var(--color-fg-muted); border: 1.5px dashed var(--color-fg-muted); box-shadow: none; }
+.mkd.sel { outline: 3px solid var(--ph); outline-offset: 2px; animation: sh-pulse 1.8s ease-out infinite; }
+.mkn { color: var(--color-fg); text-shadow: 0 0 3px #000, 0 0 3px #000, 0 0 6px #000; }
+.leaflet-tooltip.mtip, .spotpop .leaflet-popup-content-wrapper, .spotpop .leaflet-popup-tip { border: 1px solid rgba(var(--ph-rgb), .45); }
+.spot-photo img { border-radius: 0; }
+.sh svg .mk-txt { fill: #050806; }
+
+/* the warning, as a hazard block */
+.sh-foot .warn { position: relative; padding: 24px 16px 14px; border: 1px solid var(--red); background: rgba(var(--red-rgb), .07); color: var(--color-fg); }
+.sh-foot .warn::before { content: ''; position: absolute; left: -1px; right: -1px; top: -1px; height: 10px; background: repeating-linear-gradient(45deg, var(--red) 0 12px, #050806 12px 24px); }
+.sh-foot .warn b { color: var(--red); }
+.sh-foot { font-family: var(--mono); }
+.sh-foot .made { font-size: 11.5px; }
+
+@keyframes sh-blink { to { opacity: 0; } }
+@keyframes sh-flick { 0%, 91%, 100% { opacity: 1; } 92% { opacity: .82; } 93% { opacity: 1; } 95% { opacity: .66; } 96% { opacity: 1; } }
+@keyframes sh-pulse { 0% { box-shadow: 0 0 0 0 rgba(var(--ph-rgb), .6); } 100% { box-shadow: 0 0 0 14px rgba(var(--ph-rgb), 0); } }
+@media (prefers-reduced-motion: reduce) { .sh *, .sh *::before, .sh *::after { animation: none !important; } }
+.leaflet-land-pane { filter: saturate(.75) brightness(.88); }
