@@ -69,6 +69,10 @@ def load_extras():
         px = json.load(open(ROOT + "/permits_extra.json")).get("entries", [])
     except Exception:
         px = []
+    try:                                                        # road miles from the picker's starting cities (builder/drive_matrix.py)
+        zx["drive_from"] = json.load(open(ROOT + "/drive_from.json"))
+    except Exception:
+        zx["drive_from"] = {"origins": [], "road_miles": {}}
     return zx, px
 
 
@@ -178,6 +182,23 @@ def drive_time(z, extra, extras_cfg):
     return max(DRIVE_STEP_H, round(mi / mph / DRIVE_STEP_H) * DRIVE_STEP_H), True
 
 
+def drive_times_from_cities(z, x, extras_cfg):
+    """{city id: hours} for the page's "driving from" picker. Portland keeps its own time (hand-entered or estimated above).
+    Every other city is approximate road miles from drive_from.json at drive_avg_mph, to the nearest quarter hour, or
+    straight line x 1.35 when that file has no entry for the zone. All of them are estimates and the page shows them with a ~."""
+    out = {"portland": drive_time(z, x, extras_cfg)[0]}
+    df = extras_cfg.get("drive_from") or {}
+    mph = float(extras_cfg.get("drive_avg_mph") or 55)
+    for o in df.get("origins") or []:
+        if o["id"] == "portland":
+            continue
+        mi = (df.get("road_miles") or {}).get(o["id"], {}).get(z["id"])
+        if not mi:
+            mi = haversine_km(o["lat"], o["lon"], z["lat"], z["lon"]) * 0.621371 * 1.35
+        out[o["id"]] = max(DRIVE_STEP_H, round(mi / mph / DRIVE_STEP_H) * DRIVE_STEP_H)
+    return out
+
+
 def build_zones(reg, zones, perms, extras_cfg, perm_extras, series):
     """zones.json. Species are listed only when the model can ever score them in that zone (non-empty hindcast series)."""
     out = []
@@ -203,6 +224,7 @@ def build_zones(reg, zones, perms, extras_cfg, perm_extras, series):
             "pdx_km": round(haversine_km(PDX[0], PDX[1], z["lat"], z["lon"])),
             "pdx_drive_h": drive_time(z, x, extras_cfg)[0],
             "pdx_drive_est": drive_time(z, x, extras_cfg)[1],
+            "drives": drive_times_from_cities(z, x, extras_cfg),
             "regions": x.get("regions") or by_skill.get(z["id"], []),
             "sightings": x.get("sightings"),
         })
@@ -1174,6 +1196,7 @@ def export_compact():
                       "land": z.get("land", ""), "habitat": z.get("habitat", ""), "permit": (z.get("permit") or {}).get("text", ""),
                       "permit_verify": bool((z.get("permit") or {}).get("verify_before_you_go")), "pdx_km": z.get("pdx_km"),
                       "pdx_drive_h": z.get("pdx_drive_h"), "pdx_drive_est": bool(z.get("pdx_drive_est")), "regions": ",".join(z.get("regions") or []),
+                      "drives": ",".join("%s:%s" % (k, v) for k, v in (z.get("drives") or {}).items()),
                       "species": ",".join(s["key"] for s in z["species"])})
     atomic_write(out + "/zones.json", zrows)
 

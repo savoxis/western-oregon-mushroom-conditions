@@ -62,10 +62,45 @@ function h(tag, cls, text) {
   return e;
 }
 function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
-/* The one distance the list, the panel and the "Distance from Portland" sort all use: drive time, with a ~ when it is an estimate. */
+/* Where the visitor is driving from: a list of starting cities (the ids match builder/drive_from.json), remembered in a
+   first-party cookie so the choice survives a reload. The cookie holds only the city id and is never sent anywhere but this site. */
+const ORIGINS = [
+  ['portland', 'Portland'], ['bend', 'Bend'], ['eugene', 'Eugene'], ['coosbay', 'Coos Bay'],
+  ['medford', 'Medford'], ['johnday', 'John Day'], ['lagrande', 'La Grande']
+];
+const ORIGIN_COOKIE = 'shrooms_from';
+function originName(id) { const o = ORIGINS.filter((x) => x[0] === id)[0]; return o ? o[1] : 'Portland'; }
+function readOrigin() {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + ORIGIN_COOKIE + '=([a-z]+)'));
+    if (m && ORIGINS.some((o) => o[0] === m[1])) return m[1];
+  } catch (e) { /* cookies blocked: fall through to the default */ }
+  return 'portland';
+}
+function saveOrigin(id) {
+  try {
+    document.cookie = ORIGIN_COOKIE + '=' + id + '; max-age=31536000; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
+  } catch (e) { /* cookies blocked: the choice just lasts for this visit */ }
+}
+/* Hours of driving from the chosen city to a zone, or null when there is no time for it. Portland uses the hand-entered
+   time (z.pdx_drive_h); every other city comes from the build's drives table ("bend:0.75,eugene:3,..."). */
+function driveHours(z) {
+  if (S.origin === 'portland') return z.pdx_drive_h || null;
+  const m = z.drives && z.drives[S.origin];
+  return typeof m === 'number' ? m : null;
+}
+/* The one distance the list, the panel and the drive-time sort all use: drive time from the chosen city, with a ~ when it is an
+   estimate (every city but Portland, and Portland's own estimated zones). */
 function driveLabel(z) {
-  if (z.pdx_drive_h) return (z.pdx_drive_est ? '~' : '') + hours(z.pdx_drive_h);
-  return fInt(Math.round(z.pdx_km * 0.621)) + ' mi';
+  const t = driveHours(z);
+  if (t) return (S.origin !== 'portland' || z.pdx_drive_est ? '~' : '') + hours(t);
+  if (S.origin === 'portland' && z.pdx_km) return fInt(Math.round(z.pdx_km * 0.621)) + ' mi';
+  return '-';
+}
+function parseDrives(s) {
+  const out = {};
+  String(s || '').split(',').forEach((p) => { const kv = p.split(':'); if (kv.length === 2 && isFinite(+kv[1])) out[kv[0]] = +kv[1]; });
+  return out;
 }
 function hours(x) {
   if (x === null || x === undefined || x === '') return null;
@@ -78,7 +113,7 @@ function inkOn(color) { return d3.lab(color).l > 64 ? '#14181f' : '#ffffff'; }
 const S = {
   tab: 'map', sp: 'all', region: 'all', land: 'all', elev: 'any', minScore: 0, q: '', sort: 'metric', seasonOnly: false, mode: 'live', year: null, doy: null,
   playing: false, metric: 'score', heat: true, markers: true, layers: false, landMap: false, sight: true, sightWhen: 'season', sightPub: false, burns: false,
-  zone: null, zsp: null,
+  zone: null, zsp: null, origin: readOrigin(),
   fam: 'all', showAll: false, series: null, syear: null, week: null
 };
 let MAP = null;
@@ -100,7 +135,7 @@ function model() {
     const parts = z.name.split(' / ');
     return Object.assign({}, z, {
       short: parts[0], sub: parts.slice(1).join(' / '), spKeys: z.species.split(','),
-      regionList: z.regions.split(','), rows: [], w: null, best: null
+      regionList: z.regions.split(','), drives: parseDrives(z.drives), rows: [], w: null, best: null
     });
   });
   const zById = {};
@@ -333,6 +368,7 @@ function sync() {
   $('#land').value = S.land;
   $('#elev').value = S.elev;
   $('#sort').value = S.sort;
+  $('#sort option[value="pdx"]').textContent = 'Drive time from ' + originName(S.origin);
   $('#minscore').value = String(S.minScore);
   $('#q').value = S.q;
   const M0 = model();
@@ -1021,7 +1057,7 @@ dash.draw('ranklist', (el) => {
   if (!M) { el.appendChild(h('p', 'muted pad', '-')); return; }
   let items = mapItems(M);
   if (S.sort === 'name') items.sort((a, b) => a.z.short.localeCompare(b.z.short));
-  else if (S.sort === 'pdx') items.sort((a, b) => (window.ShroomRank.driveH(a.z) - window.ShroomRank.driveH(b.z)) || (a.z.pdx_km - b.z.pdx_km) || a.z.short.localeCompare(b.z.short));
+  else if (S.sort === 'pdx') items.sort((a, b) => ((driveHours(a.z) || 99) - (driveHours(b.z) || 99)) || a.z.short.localeCompare(b.z.short));
   else items = window.ShroomRank.rankItems(items, rankRaw);
   const scored = items.filter((i) => i.v !== null).length;
   const title = S.mode === 'live' ? 'Right now' : 'On ' + doyStr(S.doy, S.year) + ', ' + S.year;
@@ -1055,6 +1091,15 @@ dash.draw('ranklist', (el) => {
     }
   }
   el.appendChild(head);
+  const from = h('label', 'rl-from');                         // where the drive times are measured from
+  from.appendChild(h('span', null, 'Driving from'));
+  const pick = h('select', 'dash-select');
+  pick.setAttribute('aria-label', 'Starting city for drive times');
+  ORIGINS.forEach((o) => { const op = h('option', null, o[1]); op.value = o[0]; pick.appendChild(op); });
+  pick.value = S.origin;
+  pick.addEventListener('change', () => { S.origin = pick.value; saveOrigin(S.origin); sync(); redraw(['ranklist', 'zpanel']); });
+  from.appendChild(pick);
+  el.appendChild(from);
   const ul = h('div', 'rl');
   items.forEach((it) => {
     const b = h('button', 'rl-i' + (it.z.id === S.zone ? ' sel' : '') + (it.v === null ? ' off' : ''));
@@ -1402,7 +1447,8 @@ dash.draw('zpanel', (el) => {
   const sec3 = h('div', 'zp-sec');
   sec3.appendChild(h('h4', null, 'Access and habitat'));
   sec3.appendChild(h('p', 'zp-note', cap(z.habitat) + '.'));
-  const dist = z.pdx_drive_h ? (z.pdx_drive_est ? '' : '~') + driveLabel(z) + ' drive from Portland' : fInt(Math.round(z.pdx_km * 0.621)) + ' miles from Portland (straight line)';
+  const dist = driveHours(z) ? driveLabel(z).replace(/^(?!~)/, '~') + ' drive from ' + originName(S.origin)
+    : (S.origin === 'portland' && z.pdx_km ? fInt(Math.round(z.pdx_km * 0.621)) + ' miles from Portland (straight line)' : 'No drive time from ' + originName(S.origin) + ' yet');
   sec3.appendChild(h('p', 'zp-note', dist + '.'));
   const det = h('details', 'zp-permit');
   det.appendChild(h('summary', null, z.permit_verify ? 'Permit rules (verify before you go)' : 'Permit rules'));
