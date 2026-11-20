@@ -70,7 +70,21 @@ const ORIGINS = [
 ];
 const ORIGIN_COOKIE = 'shrooms_from';
 function originName(id) { const o = ORIGINS.filter((x) => x[0] === id)[0]; return o ? o[1] : 'Portland'; }
+/* The cookie is only ever written after the visitor says yes to the one-time notice shown the first time they pick a city.
+   The yes/no answer itself is kept in localStorage (recording a consent choice does not need consent). With no answer or a
+   "no" the choice lasts for this visit only. "Forget my choice" removes both the cookie and the answer. */
+const CONSENT_KEY = 'shrooms_cookie_choice';
+function cookieChoice() {
+  try { const v = localStorage.getItem(CONSENT_KEY); return v === 'yes' || v === 'no' ? v : null; } catch (e) { return null; }
+}
+function setCookieChoice(v) {
+  try { if (v) localStorage.setItem(CONSENT_KEY, v); else localStorage.removeItem(CONSENT_KEY); } catch (e) { /* storage blocked: asked again next visit */ }
+}
+function dropOriginCookie() {
+  try { document.cookie = ORIGIN_COOKIE + '=; max-age=0; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : ''); } catch (e) { /* nothing to remove */ }
+}
 function readOrigin() {
+  if (cookieChoice() !== 'yes') { dropOriginCookie(); return 'portland'; }   // no yes on record: never trust or keep a cookie
   try {
     const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + ORIGIN_COOKIE + '=([a-z]+)'));
     if (m && ORIGINS.some((o) => o[0] === m[1])) return m[1];
@@ -78,6 +92,7 @@ function readOrigin() {
   return 'portland';
 }
 function saveOrigin(id) {
+  if (cookieChoice() !== 'yes') return;
   try {
     document.cookie = ORIGIN_COOKIE + '=' + id + '; max-age=31536000; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
   } catch (e) { /* cookies blocked: the choice just lasts for this visit */ }
@@ -1091,15 +1106,41 @@ dash.draw('ranklist', (el) => {
     }
   }
   el.appendChild(head);
-  const from = h('label', 'rl-from');                         // where the drive times are measured from
+  const from = h('div', 'rl-from');                           // where the drive times are measured from
   from.appendChild(h('span', null, 'Driving from'));
   const pick = h('select', 'dash-select');
   pick.setAttribute('aria-label', 'Starting city for drive times');
   ORIGINS.forEach((o) => { const op = h('option', null, o[1]); op.value = o[0]; pick.appendChild(op); });
   pick.value = S.origin;
-  pick.addEventListener('change', () => { S.origin = pick.value; saveOrigin(S.origin); sync(); redraw(['ranklist', 'zpanel']); });
+  pick.addEventListener('change', () => {
+    S.origin = pick.value;
+    if (cookieChoice() === null) S.askCookie = true;          // first pick on this device: ask once before saving anything
+    saveOrigin(S.origin);
+    sync(); redraw(['ranklist', 'zpanel']);
+  });
   from.appendChild(pick);
+  if (cookieChoice() === 'yes') {
+    const forget = h('button', 'rl-forget', 'Forget my choice');
+    forget.type = 'button';
+    forget.addEventListener('click', () => { dropOriginCookie(); setCookieChoice(null); S.origin = 'portland'; sync(); redraw(['ranklist', 'zpanel']); });
+    from.appendChild(forget);
+  }
   el.appendChild(from);
+  if (S.askCookie && cookieChoice() === null) {
+    const ask = h('div', 'rl-consent');
+    ask.setAttribute('role', 'region');
+    ask.setAttribute('aria-label', 'Cookie notice');
+    ask.appendChild(h('p', null, 'Remember your starting city? Saying yes saves one small cookie on this device. It holds only the city name, lasts a year, and is used only to set this menu next time. Without it, the menu resets when you leave. We do not track you either way.'));
+    const row = h('div', 'rl-consent-b');
+    const yes = h('button', 'btn sm', 'Yes, remember it');
+    const no = h('button', 'btn sm', 'No thanks');
+    yes.type = 'button'; no.type = 'button';
+    yes.addEventListener('click', () => { S.askCookie = false; setCookieChoice('yes'); saveOrigin(S.origin); redraw(['ranklist']); });
+    no.addEventListener('click', () => { S.askCookie = false; setCookieChoice('no'); redraw(['ranklist']); });
+    row.appendChild(yes); row.appendChild(no);
+    ask.appendChild(row);
+    el.appendChild(ask);
+  }
   const ul = h('div', 'rl');
   items.forEach((it) => {
     const b = h('button', 'rl-i' + (it.z.id === S.zone ? ' sel' : '') + (it.v === null ? ' off' : ''));

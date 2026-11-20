@@ -149,6 +149,11 @@
 .rl-d { color: var(--sh-muted); font-size: var(--cds-font-size-caption); white-space: nowrap; }
 .rl-from { display: flex; align-items: center; gap: 8px; padding: 0 4px 8px; font-size: var(--cds-font-size-caption); color: var(--sh-muted); }
 .rl-from select { flex: 0 1 auto; min-width: 0; }
+.rl-forget { margin-left: auto; border: 0; background: none; padding: 2px 4px; color: var(--sh-muted); font: inherit; text-decoration: underline; cursor: pointer; }
+.rl-forget:hover { color: var(--color-fg); }
+.rl-consent { margin: 0 4px 10px; padding: 10px 12px; border: 1px solid var(--sh-muted); border-radius: 12px; background: var(--sh-panel); font-size: var(--cds-font-size-caption); }
+.rl-consent p { margin: 0 0 8px; }
+.rl-consent-b { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ---------- stats ---------- */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--cds-gap-sm); margin-bottom: var(--cds-gap-md); }
