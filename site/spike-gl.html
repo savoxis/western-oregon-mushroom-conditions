@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Map spike (MapLibre)</title>
+<link rel="stylesheet" href="vendor/maplibre/maplibre-gl.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  body { margin: 0; background: #050806; color: #e6fff0; font-family: system-ui, sans-serif; }
+  #bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 8px 12px; font-size: 13px; }
+  #map { height: 70vh; min-height: 360px; }
+  #out { padding: 8px 12px; font: 12px ui-monospace, monospace; white-space: pre-wrap; color: #78bb98; }
+  button, select { font: inherit; background: #09110d; color: #e6fff0; border: 1px solid #1f4a33; padding: 4px 9px; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b>MapLibre spike</b>
+  <label>Mushroom <select id="fam"><option value="chanterelle">Chanterelle</option><option value="king_fall">Fall king</option><option value="morel_natural">Morel</option><option value="king_spring">Spring king</option></select></label>
+  <label>Heat cell <select id="cell"><option value="0.04">0.04 deg (about 3 km)</option><option value="0.03" selected>0.03 deg</option><option value="0.02">0.02 deg</option></select></label>
+  <button id="bench-heat" type="button">Time the heat surface</button>
+  <button id="bench-zoom" type="button">Zoom benchmark</button>
+</div>
+<div id="map"></div>
+<div id="out">loading...</div>
+<script src="vendor/maplibre/maplibre-gl-csp.js"></script>
+<script src="spike-gl.js"></script>
+</body>
+</html>

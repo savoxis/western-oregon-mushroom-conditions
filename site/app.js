@@ -497,6 +497,7 @@ function panelShift() {
   return wide ? [192, 0] : [0, Math.round((MAP && MAP.el.clientHeight ? MAP.el.clientHeight : 500) * 0.3)];
 }
 function flyTo(z) {
+  if (MAP && MAP.isGL) { glFlyTo(z); return; }
   if (!MAP || !MAP.lmap) return;
   const m = MAP.lmap;
   const zoom = Math.max(m.getZoom(), 9);
@@ -506,6 +507,7 @@ function flyTo(z) {
 }
 function resetView() {
   const M = model();
+  if (MAP && MAP.isGL) { glResetView(M); return; }
   if (!MAP || !MAP.lmap || !M) return;
   const pts = M.zones.map((z) => [z.lat, z.lon]).concat(M.gridPts.map((p) => [p.lat, p.lon]));
   MAP.progUntil = Date.now() + 700;            // marks the next move as ours, not the visitor's
@@ -641,10 +643,11 @@ function spotEstimate(ev) {
     });
   };
   if (SIGHT) warn(); else loadSightings().then(() => { if (SIGHT) warn(); });
+  if (MAP.isGL) { glPopup([ev.latlng.lng, ev.latlng.lat], box, 'spotpop', '300px'); return; }
   L.popup({ className: 'spotpop' }).setLatLng(ev.latlng).setContent(box).openOn(MAP.lmap);
 }
 
-dash.draw('map', {
+const LEAFLET_IMPL = {
   mount(el) {
     el.replaceChildren();
     const lmap = L.map(el, { zoomControl: false, zoomAnimation: false, attributionControl: false, minZoom: 5, maxZoom: 15, zoomSnap: 0.25, worldCopyJump: false });
@@ -704,7 +707,252 @@ dash.draw('map', {
     scheduleHeat(made);
   },
   unmount() { MAP = null; }
-});
+};
+
+/* ---------- MapLibre version of the map (opt in with ?map=gl; Leaflet stays the default and the fallback) ----------
+   Same data, same markers, same popups; the heat surface is computed once per data change on a fixed lat/lon grid and handed to the GPU as an image,
+   so panning and zooming no longer recompute it. MapLibre zoom = Leaflet zoom - 1 for these 256 px raster tiles. */
+const USE_GL = !!window.maplibregl && /(^|[?&])map=gl(&|$)/.test(location.search);
+const EMPTY_FC = { type: 'FeatureCollection', features: [] };
+const CLEAR_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+const HEAT_BOX = { w: -124.8, e: -116.4, s: 41.9, n: 46.4 };
+const HEAT_CORNERS = [[HEAT_BOX.w, HEAT_BOX.n], [HEAT_BOX.e, HEAT_BOX.n], [HEAT_BOX.e, HEAT_BOX.s], [HEAT_BOX.w, HEAT_BOX.s]];
+
+function glPopup(lngLat, content, cls, maxWidth) {
+  if (!MAP || !MAP.gl) return null;
+  const pop = new maplibregl.Popup({ className: cls || 'spotpop', maxWidth: maxWidth || '320px', closeButton: true }).setLngLat(lngLat).setDOMContent(content).addTo(MAP.gl);
+  photoFx(!!(content.querySelector && content.querySelector('.spot-photo')));
+  pop.on('close', () => photoFx(false));
+  return pop;
+}
+function glFlyTo(z) {
+  const m = MAP.gl, sh = panelShift();
+  m.flyTo({ center: [z.lon, z.lat], zoom: Math.max(m.getZoom(), 8), offset: [-sh[0], -sh[1]], duration: 600 });
+}
+function glResetView(M) {
+  if (!M) return;
+  let w = 180, e = -180, so = 90, n = -90;
+  M.zones.map((z) => [z.lat, z.lon]).concat(M.gridPts.map((p) => [p.lat, p.lon])).forEach((p) => { if (p[1] < w) w = p[1]; if (p[1] > e) e = p[1]; if (p[0] < so) so = p[0]; if (p[0] > n) n = p[0]; });
+  MAP.progUntil = Date.now() + 700;
+  MAP.gl.fitBounds([[w, so], [e, n]], { padding: 28, maxZoom: 10, animate: false });
+}
+function glIcon(it, selected) {
+  const col = valueColor(it.v);
+  const wrap = document.createElement('div');
+  wrap.className = 'mkicon';
+  wrap.style.width = '34px'; wrap.style.height = '34px';
+  const evl = it.v !== null && !isWx() ? evidenceLevel(it.z, it.key) : null;
+  const dot = h('div', 'mkd' + (it.v === null ? ' off' : '') + (selected ? ' sel' : '') + (evl ? ' ev-' + evl : ''), valueText(it.v) || '-');
+  if (col) { dot.style.background = col; dot.style.color = inkOn(col); }
+  wrap.appendChild(dot);
+  wrap.appendChild(h('div', 'mkn', it.z.short));
+  wrap.tabIndex = 0;
+  wrap.setAttribute('role', 'button');
+  wrap.setAttribute('aria-label', it.z.short + (it.v === null ? ', off-season' : ', ' + valueText(it.v)));
+  return wrap;
+}
+function glMarkers(made, items) {
+  made.markers.forEach((m) => m.remove());
+  made.markers = [];
+  made.items = items;
+  if (!S.markers) return;
+  const ordered = items.slice().sort((a, b) => (a.v === null) - (b.v === null) || (a.v || 0) - (b.v || 0));
+  ordered.forEach((it) => {
+    const elx = glIcon(it, it.z.id === S.zone);
+    let tip = null;
+    elx.addEventListener('mouseenter', () => { tip = new maplibregl.Popup({ className: 'mtip', closeButton: false, closeOnClick: false, offset: [0, -20] }).setLngLat([it.z.lon, it.z.lat]).setDOMContent(tipFor(it)).addTo(made.gl); });
+    elx.addEventListener('mouseleave', () => { if (tip) { tip.remove(); tip = null; } });
+    elx.addEventListener('click', (ev) => { ev.stopPropagation(); if (tip) { tip.remove(); tip = null; } selectZone(it.z.id, true); });
+    elx.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selectZone(it.z.id, true); } });
+    made.markers.push(new maplibregl.Marker({ element: elx, anchor: 'center' }).setLngLat([it.z.lon, it.z.lat]).addTo(made.gl));
+  });
+}
+const HEAT_LUT = new Map();
+function heatRgb(v) {
+  const k = (isWx() ? 'w' : 's') + Math.round(v * 4);
+  let c = HEAT_LUT.get(k);
+  if (!c) { const col = valueColor(v); const rgb = d3.rgb(col); c = [rgb.r, rgb.g, rgb.b]; HEAT_LUT.set(k, c); }
+  return c;
+}
+function glHeat(made) {
+  const map = made.gl, src = map.getSource('heat');
+  if (!src) return;
+  const pts = (made.items || []).filter((it) => it.v !== null).map((it) => ({ lat: it.z.lat, lon: it.z.lon, v: it.v })).concat(made.grid || []);
+  if (!S.heat || !pts.length || !OREGON_RING) { map.setPaintProperty('heat', 'raster-opacity', 0); return; }
+  const cell = 0.03, gw = Math.round((HEAT_BOX.e - HEAT_BOX.w) / cell), gh = Math.round((HEAT_BOX.n - HEAT_BOX.s) / cell);
+  const cv = document.createElement('canvas');
+  cv.width = gw; cv.height = gh;
+  const ctx = cv.getContext('2d');
+  const img = ctx.createImageData(gw, gh);
+  const kx = Math.cos(44 * Math.PI / 180) * 111.32, ky = 110.57;
+  const hasGrid = !!(made.grid && made.grid.length);
+  const sigma = hasGrid ? 25 : 40, reach = sigma * 3.2, inv2s2 = 1 / (2 * sigma * sigma);
+  const px = pts.map((p) => ({ x: (p.lon - HEAT_BOX.w) * kx, y: (HEAT_BOX.n - p.lat) * ky, v: p.v }));
+  const dx = cell * kx, dy = cell * ky;
+  for (let j = 0; j < gh; j++) {
+    for (let i = 0; i < gw; i++) {
+      const x = (i + 0.5) * dx, y = (j + 0.5) * dy;
+      let sw = 0, sv = 0;
+      for (let n = 0; n < px.length; n++) {
+        const ax = x - px[n].x, ay = y - px[n].y;
+        if (ax > reach || ax < -reach || ay > reach || ay < -reach) continue;
+        const d2 = ax * ax + ay * ay;
+        if (d2 > reach * reach) continue;
+        const w = Math.exp(-d2 * inv2s2);
+        sw += w; sv += w * px[n].v;
+      }
+      if (sw < 0.02) continue;
+      const c = heatRgb(sv / sw), o = (j * gw + i) * 4;
+      img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = Math.round(Math.min(1, sw / 0.55) * 0.62 * 255);
+    }
+  }
+  const tmp = document.createElement('canvas');
+  tmp.width = gw; tmp.height = gh;
+  tmp.getContext('2d').putImageData(img, 0, 0);
+  const oc = document.createElement('canvas');
+  oc.width = gw * 2; oc.height = gh * 2;
+  const octx = oc.getContext('2d');
+  octx.beginPath();
+  OREGON_RING.forEach((p, i) => { const x = (p[0] - HEAT_BOX.w) / (HEAT_BOX.e - HEAT_BOX.w) * oc.width, y = (HEAT_BOX.n - p[1]) / (HEAT_BOX.n - HEAT_BOX.s) * oc.height; if (i) octx.lineTo(x, y); else octx.moveTo(x, y); });
+  octx.closePath();
+  octx.clip();
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
+  octx.drawImage(tmp, 0, 0, oc.width, oc.height);
+  src.updateImage({ url: oc.toDataURL('image/png'), coordinates: HEAT_CORNERS });
+  map.setPaintProperty('heat', 'raster-opacity', 1);
+}
+function glLand(made) {
+  if (made.gl.getLayer('land')) made.gl.setLayoutProperty('land', 'visibility', S.landMap ? 'visible' : 'none');
+}
+function glSightings(made) {
+  const map = made.gl, src = map.getSource('sight'), note = $('#sight-note');
+  if (!src) return;
+  if (!S.sight) { src.setData(EMPTY_FC); note.hidden = true; return; }
+  note.hidden = false;
+  if (!SIGHT) { note.textContent = 'Loading past finds...'; loadSightings(); return; }
+  const keep = sightPredicate(), ref = sightRef();
+  let n = 0, rec = 0;
+  const feats = [];
+  SIGHT.rows.forEach((r, i) => {
+    if (!keep(r)) return;
+    n++;
+    const fresh = r.t <= ref && ref - r.t <= 30 * 864e5;
+    if (fresh) rec++;
+    feats.push({ type: 'Feature', properties: { i: i, col: FAM[famOf(r.sp)].color, f: fresh ? 1 : 0 }, geometry: { type: 'Point', coordinates: [r.lon, r.lat] } });
+  });
+  src.setData({ type: 'FeatureCollection', features: feats });
+  const when = S.sightWhen === 'recent' ? 'in the 30 days before ' + fMD(new Date(ref)) : S.sightWhen === 'season' ? 'within 3 weeks of ' + fMD(new Date(ref)) + ' in any year since 2010' : 'since 2010';
+  note.textContent = fInt(n) + ' past finds ' + when + (S.sightPub ? ', on land open to picking' : '') + (rec && S.sightWhen !== 'recent' ? ' (' + rec + ' in the last 30 days, dark ring)' : '') + '.';
+  note.appendChild(h('span', 'sub', ' These public reports show where people look, not where mushrooms are likeliest.'));
+  const rep = h('div', 'rep');
+  rep.appendChild(reportLinks(null, 'Found something? Report it on '));
+  note.appendChild(rep);
+}
+function glBurns(made) {
+  const map = made.gl, src = map.getSource('burn'), note = $('#burn-note');
+  if (!src) return;
+  if (!S.burns) { src.setData(EMPTY_FC); note.hidden = true; return; }
+  note.hidden = false;
+  if (!BURNS) { note.textContent = 'Loading 2026 burns...'; loadBurns(); return; }
+  if (BURNS.failed || !BURNS.fires.length) { src.setData(EMPTY_FC); note.textContent = 'The 2026 burn layer is not available right now.'; return; }
+  let acres = 0, w = 180, e = -180, so = 90, n = -90;
+  const feats = BURNS.fires.map((f, i) => {
+    acres += (f.or_acres !== undefined ? f.or_acres : f.acres);
+    f.polys.forEach((poly) => poly.forEach((ring) => ring.forEach((p) => { if (p[0] < w) w = p[0]; if (p[0] > e) e = p[0]; if (p[1] < so) so = p[1]; if (p[1] > n) n = p[1]; })));
+    return { type: 'Feature', properties: { i: i, closed: f.closure && f.closure.status === 'closed' ? 1 : 0 }, geometry: { type: 'MultiPolygon', coordinates: f.polys } };
+  });
+  src.setData({ type: 'FeatureCollection', features: feats });
+  note.textContent = fInt(BURNS.fires.length) + ' Oregon fires of ' + (BURNS.year || 2026) + ' over 1,000 acres, ' + fInt(acres) + ' acres burned in Oregon. Most big burns are east of the Cascades. Burn scars are not a map of where morels are.';
+  const row = h('div', 'rep');
+  const fit = h('button', 'btn sm', 'Show all burns');
+  fit.type = 'button';
+  fit.addEventListener('click', () => { made.userMoved = true; map.fitBounds([[w, so], [e, n]], { padding: 24 }); });
+  row.appendChild(fit);
+  row.appendChild(document.createTextNode(' '));
+  const a = h('a', null, 'Spring 2027 morel pass');
+  a.href = 'burn-pass.html';
+  row.appendChild(a);
+  note.appendChild(row);
+}
+
+const GL_IMPL = {
+  mount(el) {
+    el.replaceChildren();
+    maplibregl.setWorkerUrl('vendor/maplibre/maplibre-gl-csp-worker.js');
+    let map;
+    try {
+      map = new maplibregl.Map({
+      container: el, center: [-122.3, 44.2], zoom: 6, minZoom: 4, maxZoom: 14, attributionControl: false, dragRotate: false, pitchWithRotate: false,
+      style: { version: 8, sources: {
+        topo: { type: 'raster', tiles: [TOPO], tileSize: 256, maxzoom: 15, attribution: 'Tiles: U.S. Geological Survey' },
+        land: { type: 'raster', tiles: [LANDTILE], tileSize: 256, maxzoom: 15, attribution: 'Land ownership: BLM Surface Management Agency' } },
+      layers: [{ id: 'topo', type: 'raster', source: 'topo' }, { id: 'land', type: 'raster', source: 'land', layout: { visibility: 'none' }, paint: { 'raster-opacity': 0.62 } }] }
+    });
+    } catch (e) {                                   // no WebGL: fall back to the Leaflet map, which is what everyone else sees
+      el.replaceChildren();
+      return LEAFLET_IMPL.mount(el);
+    }
+    map.touchZoomRotate.disableRotation();
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+    const made = { el, gl: map, isGL: true, markers: [], items: [], grid: [], fitted: false, ready: false, userMoved: false };
+    const mine = () => Date.now() < (made.progUntil || 0);
+    map.on('load', () => {
+      map.addSource('heat', { type: 'image', url: CLEAR_PNG, coordinates: HEAT_CORNERS });
+      map.addLayer({ id: 'heat', type: 'raster', source: 'heat', paint: { 'raster-opacity': 1, 'raster-fade-duration': 0 } });
+      map.addSource('burn', { type: 'geojson', data: EMPTY_FC });
+      map.addLayer({ id: 'burn-f', type: 'fill', source: 'burn', paint: { 'fill-color': '#e8743b', 'fill-opacity': ['case', ['==', ['get', 'closed'], 1], 0.08, 0.2] } });
+      map.addLayer({ id: 'burn-open', type: 'line', source: 'burn', filter: ['==', ['get', 'closed'], 0], paint: { 'line-color': '#a63d14', 'line-width': 1.5 } });
+      map.addLayer({ id: 'burn-closed', type: 'line', source: 'burn', filter: ['==', ['get', 'closed'], 1], paint: { 'line-color': '#6b6b6b', 'line-width': 1.5, 'line-dasharray': [3, 3] } });
+      map.addSource('sight', { type: 'geojson', data: EMPTY_FC });
+      map.addLayer({ id: 'sight-c', type: 'circle', source: 'sight', paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 7, 4.5, 9, 6], 'circle-color': ['get', 'col'], 'circle-opacity': 0.88,
+        'circle-stroke-width': ['case', ['==', ['get', 'f'], 1], 2, 1], 'circle-stroke-color': ['case', ['==', ['get', 'f'], 1], '#111111', '#ffffff'] } });
+      map.on('click', 'sight-c', (ev) => { const r = SIGHT && SIGHT.rows[ev.features[0].properties.i]; if (r) { const box = sightPopup(r, { update() {} }); glPopup([r.lon, r.lat], box, 'spotpop', '340px'); } });
+      map.on('click', 'burn-f', (ev) => { const f = BURNS && BURNS.fires[ev.features[0].properties.i]; if (f) glPopup([ev.lngLat.lng, ev.lngLat.lat], burnPopup(f), 'spotpop', '280px'); });
+      ['sight-c', 'burn-f'].forEach((l) => { map.on('mouseenter', l, () => { map.getCanvas().style.cursor = 'pointer'; }); map.on('mouseleave', l, () => { map.getCanvas().style.cursor = ''; }); });
+      made.ready = true;
+      dash.draw('map');
+    });
+    map.on('click', (ev) => {
+      const hit = map.queryRenderedFeatures(ev.point, { layers: ['sight-c', 'burn-f'].filter((id) => map.getLayer(id)) });
+      if (hit.length) return;
+      spotEstimate({ latlng: { lat: ev.lngLat.lat, lng: ev.lngLat.lng } });
+    });
+    map.on('movestart', (ev) => { if (!mine() && ev.originalEvent) made.userMoved = true; });
+    map.on('zoomend', () => el.classList.toggle('z-hi', map.getZoom() >= 8));
+    if (window.ResizeObserver) {
+      new ResizeObserver(() => {
+        if (!el.clientWidth || !el.clientHeight) return;
+        map.resize();
+        if (!made.userMoved && made.fitted) resetView();
+      }).observe(el);
+    }
+    MAP = made;
+    return made;
+  },
+  update(el, made) {
+    if (!made.isGL) { LEAFLET_IMPL.update(el, made); return; }
+    const M = model();
+    if (!M || !made.ready) return;
+    setDefaultsFromModel(M);
+    if (!el.clientWidth || !el.clientHeight) {
+      if ((made.retries = (made.retries || 0) + 1) < 12) requestAnimationFrame(() => dash.draw('map'));
+      return;
+    }
+    made.retries = 0;
+    made.gl.resize();
+    if (!made.fitted) { made.fitted = true; resetView(); }
+    glMarkers(made, mapItems(M));
+    made.grid = gridItems(M);
+    glLand(made);
+    glBurns(made);
+    glSightings(made);
+    el.classList.toggle('z-hi', made.gl.getZoom() >= 8);
+    glHeat(made);
+  },
+  unmount() { if (MAP && MAP.gl) MAP.gl.remove(); MAP = null; }
+};
+dash.draw('map', USE_GL ? GL_IMPL : LEAFLET_IMPL);
 
 /* ---------- past finds (iNaturalist reports), land ownership overlay and the zone-panel "Past finds nearby" section ---------- */
 const SIGHT_KEY = { morel: 'morel_natural', morel_natural: 'morel_natural', morel_burn: 'morel_natural', king_spring: 'king_spring', chanterelle: 'chanterelle', king_fall: 'king_fall' };
@@ -873,6 +1121,7 @@ function sightPopup(r, popup) {
   return box;
 }
 function drawSightings(made) {
+  if (made.isGL) { glSightings(made); return; }
   made.gSight.clearLayers();
   const note = $('#sight-note');
   if (!S.sight) { note.hidden = true; return; }
@@ -898,6 +1147,7 @@ function drawSightings(made) {
   note.appendChild(rep);
 }
 function syncLandLayer(made) {
+  if (made.isGL) { glLand(made); return; }
   const has = made.lmap.hasLayer(made.landLayer);
   if (S.landMap && !has) made.landLayer.addTo(made.lmap);
   if (!S.landMap && has) made.lmap.removeLayer(made.landLayer);
@@ -950,6 +1200,7 @@ function burnPopup(f) {
   return box;
 }
 function drawBurns(made) {
+  if (made.isGL) { glBurns(made); return; }
   made.gBurn.clearLayers();
   const note = $('#burn-note');
   if (!S.burns) { note.hidden = true; return; }
@@ -2314,8 +2565,8 @@ $('#sight-when').addEventListener('change', (e) => { S.sightWhen = e.target.valu
 $('#opt-sightpub').addEventListener('change', (e) => { S.sightPub = e.target.checked; redraw(['map']); });
 $('#opt-burns').addEventListener('change', (e) => { S.burns = e.target.checked; sync(); redraw(['map']); });
 $('#layers-btn').addEventListener('click', () => { S.layers = !S.layers; sync(); });
-$('#zoom-in').addEventListener('click', () => { if (MAP) MAP.lmap.zoomIn(); });
-$('#zoom-out').addEventListener('click', () => { if (MAP) MAP.lmap.zoomOut(); });
+$('#zoom-in').addEventListener('click', () => { if (MAP) (MAP.isGL ? MAP.gl : MAP.lmap).zoomIn(); });
+$('#zoom-out').addEventListener('click', () => { if (MAP) (MAP.isGL ? MAP.gl : MAP.lmap).zoomOut(); });
 $('#zoom-reset').addEventListener('click', () => { if (MAP) MAP.userMoved = false; resetView(); });
 $('#tm-slider').addEventListener('input', (e) => { S.doy = +e.target.value; redraw(['map', 'timeread', 'ranklist', 'zpanel']); });
 $('#tm-play').addEventListener('click', () => { if (S.playing) stopPlay(); else startPlay(); sync(); });
