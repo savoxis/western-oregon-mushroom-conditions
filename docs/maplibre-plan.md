@@ -45,3 +45,15 @@ Status: plan only, nothing built. Decide after hunting.strong.beer and fishing.s
 ## Decision rule
 
 Go ahead only if phase 1 shows smoother zoom and playback on a phone at an acceptable size cost, and the two new sites have been stable with MapLibre in real use. Otherwise keep Leaflet: nothing about the shrooms map is broken today.
+
+## Spike results (Nov 22, 2026, `site/spike-gl.html` on the `maplibre-spike` branch, not deployed)
+
+Built in one sitting from the same data files as the live page: USGS topo, the Gaussian heat surface as an image source clipped to Oregon, and the zones as a circle layer.
+
+- **The heat surface works as planned.** 119 points (zones plus the statewide grid) blend in 15 ms (0.04 degree cells), 26 ms (0.03) or 51 ms (0.02), computed once per data change. The live page recomputes its surface on every pan and zoom frame, so panning is where the saving is. A time-machine frame costs one computation, well inside the 110 ms step.
+- **Zoom stayed smooth** in the preview pane: 140 frames over four animated zooms, mean 33 ms, worst 50 ms, with no heat recomputation during them. That pane is software-rendered, so a real phone GPU should do at least as well; this still needs a check on an actual phone.
+- **Clean under the content security policy rules** that matter here: the worker is a same-origin file, the heat image is a data URL (the live policy already allows `data:` images), and tiles load by fetch, so `connect-src` must list the two tile hosts.
+- **Not in the spike yet:** zone labels and score badges, sightings with clustering and photo popups, burns, the land layer, popups, the panel shift and the time-machine controls. Zone labels are the one design question: text on a MapLibre map needs a font glyph service, so the plan keeps the existing HTML marker icons for the ~80 zones.
+- **Cost unchanged:** about 970 KB of script against Leaflet's 148 KB.
+
+Verdict: phase 1 passes on feasibility. The decision rule above still applies: wait for the hunting and fishing sites to run on MapLibre in real use and test on a phone before starting phase 2.
