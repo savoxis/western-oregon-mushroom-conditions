@@ -714,7 +714,6 @@ const LEAFLET_IMPL = {
    so panning and zooming no longer recompute it. MapLibre zoom = Leaflet zoom - 1 for these 256 px raster tiles. */
 const USE_GL = !!window.maplibregl && /(^|[?&])map=gl(&|$)/.test(location.search);
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
-const CLEAR_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 const HEAT_BOX = { w: -124.8, e: -116.4, s: 41.9, n: 46.4 };
 const HEAT_CORNERS = [[HEAT_BOX.w, HEAT_BOX.n], [HEAT_BOX.e, HEAT_BOX.n], [HEAT_BOX.e, HEAT_BOX.s], [HEAT_BOX.w, HEAT_BOX.s]];
 
@@ -775,10 +774,9 @@ function heatRgb(v) {
   return c;
 }
 function glHeat(made) {
-  const map = made.gl, src = map.getSource('heat');
-  if (!src) return;
+  const map = made.gl;
   const pts = (made.items || []).filter((it) => it.v !== null).map((it) => ({ lat: it.z.lat, lon: it.z.lon, v: it.v })).concat(made.grid || []);
-  if (!S.heat || !pts.length || !OREGON_RING) { map.setPaintProperty('heat', 'raster-opacity', 0); return; }
+  if (!S.heat || !pts.length || !OREGON_RING) { if (map.getLayer('heat')) map.setPaintProperty('heat', 'raster-opacity', 0); return; }
   const cell = 0.03, gw = Math.round((HEAT_BOX.e - HEAT_BOX.w) / cell), gh = Math.round((HEAT_BOX.n - HEAT_BOX.s) / cell);
   const cv = document.createElement('canvas');
   cv.width = gw; cv.height = gh;
@@ -819,8 +817,11 @@ function glHeat(made) {
   octx.imageSmoothingEnabled = true;
   octx.imageSmoothingQuality = 'high';
   octx.drawImage(tmp, 0, 0, oc.width, oc.height);
-  src.updateImage({ url: oc.toDataURL('image/png'), coordinates: HEAT_CORNERS });
-  map.setPaintProperty('heat', 'raster-opacity', 1);
+  /* a canvas source, not an image URL: nothing is fetched, so the page's connect-src needs no data: entry */
+  if (map.getLayer('heat')) map.removeLayer('heat');
+  if (map.getSource('heat')) map.removeSource('heat');
+  map.addSource('heat', { type: 'canvas', canvas: oc, coordinates: HEAT_CORNERS, animate: false });
+  map.addLayer({ id: 'heat', type: 'raster', source: 'heat', paint: { 'raster-opacity': 1, 'raster-fade-duration': 0 } }, 'burn-f');
 }
 function glLand(made) {
   if (made.gl.getLayer('land')) made.gl.setLayoutProperty('land', 'visibility', S.landMap ? 'visible' : 'none');
@@ -898,8 +899,6 @@ const GL_IMPL = {
     const made = { el, gl: map, isGL: true, markers: [], items: [], grid: [], fitted: false, ready: false, userMoved: false };
     const mine = () => Date.now() < (made.progUntil || 0);
     map.on('load', () => {
-      map.addSource('heat', { type: 'image', url: CLEAR_PNG, coordinates: HEAT_CORNERS });
-      map.addLayer({ id: 'heat', type: 'raster', source: 'heat', paint: { 'raster-opacity': 1, 'raster-fade-duration': 0 } });
       map.addSource('burn', { type: 'geojson', data: EMPTY_FC });
       map.addLayer({ id: 'burn-f', type: 'fill', source: 'burn', paint: { 'fill-color': '#e8743b', 'fill-opacity': ['case', ['==', ['get', 'closed'], 1], 0.08, 0.2] } });
       map.addLayer({ id: 'burn-open', type: 'line', source: 'burn', filter: ['==', ['get', 'closed'], 0], paint: { 'line-color': '#a63d14', 'line-width': 1.5 } });

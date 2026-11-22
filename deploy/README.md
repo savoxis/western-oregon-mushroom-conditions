@@ -32,7 +32,7 @@ Everything here uses placeholders. Real values live only on the servers, in file
        root * /srv/shrooms                     # /opt/shrooms/site mounted read-only
        encode zstd gzip
        header {
-           Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://inaturalist-open-data.s3.amazonaws.com https://basemap.nationalmap.gov https://gis.blm.gov https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://api.gbif.org; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+           Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://inaturalist-open-data.s3.amazonaws.com https://basemap.nationalmap.gov https://gis.blm.gov https://tile.openstreetmap.org https://*.tile.openstreetmap.org; connect-src 'self' https://api.gbif.org https://basemap.nationalmap.gov https://gis.blm.gov; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
            X-Content-Type-Options nosniff
            Referrer-Policy strict-origin-when-cross-origin
            X-Frame-Options DENY

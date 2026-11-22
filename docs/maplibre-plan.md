@@ -1,6 +1,6 @@
 # Plan: moving the shrooms map from Leaflet to MapLibre GL JS
 
-Status: plan only, nothing built. Decide after hunting.strong.beer and fishing.strong.beer have run on MapLibre for a while.
+Status: built behind `?map=gl` and deployed (Nov 22, 2026); Leaflet stays the default and the fallback.
 
 ## Why consider it
 
@@ -66,7 +66,7 @@ Working in the preview with live data: the topo base, the heat surface (computed
 
 Still to do before it could become the default:
 1. Phone test on real hardware (frame rate, battery, memory) and a compare against Leaflet on the same phone.
-2. Production header: `connect-src` must list the two tile hosts (basemap.nationalmap.gov and gis.blm.gov) and the map worker must be allowed (same origin, so `worker-src 'self'` is enough).
+2. ~~Production header~~ Done: `connect-src` lists the two tile hosts; the worker is same origin. The heat surface is a canvas source, so no `data:` entry is needed in `connect-src`.
 3. Pixel polish: marker label timing at the zoom threshold, popup auto-pan under the top bar, attribution placement.
 4. Decide about clustering the sightings (MapLibre can do it natively; today they are plain dots).
 5. A week behind the flag with real users, then flip the default and keep the Leaflet path for one release.
