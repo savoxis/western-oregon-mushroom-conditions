@@ -536,3 +536,15 @@
 .rc-tip .tip-m { color: var(--sh-muted); }
 .rc-tip .tip-l { display: flex; align-items: center; gap: 6px; }
 .recharts-wrapper { max-width: 100%; }
+
+/* MapLibre version of the map (?map=gl): same look as the Leaflet popups and tooltips */
+.maplibregl-popup.spotpop .maplibregl-popup-content, .maplibregl-popup.mtip .maplibregl-popup-content { background: var(--sh-panel); color: var(--color-fg); border: 1px solid rgba(var(--ph-rgb), .45); border-radius: 0; box-shadow: var(--cds-shadow-popover); }
+.maplibregl-popup.spotpop .maplibregl-popup-content { padding: 10px 12px; font-size: 12.5px; line-height: 1.45; }
+.maplibregl-popup.mtip .maplibregl-popup-content { padding: 6px 9px; font-size: 12.5px; pointer-events: none; }
+.maplibregl-popup.spotpop .maplibregl-popup-tip, .maplibregl-popup.mtip .maplibregl-popup-tip { display: none; }
+.maplibregl-popup.spotpop .maplibregl-popup-close-button { color: var(--color-fg); }
+.maplibregl-map .mkicon { cursor: pointer; }
+.maplibregl-map .mkicon:focus-visible .mkd { outline: 3px solid var(--ph); outline-offset: 2px; }
+.maplibregl-ctrl-attrib { background: rgba(5, 8, 6, .7) !important; color: var(--color-fg-muted); }
+.maplibregl-ctrl-attrib a { color: var(--color-fg-muted); }
+.map.maplibregl-map { position: absolute; inset: 0; }

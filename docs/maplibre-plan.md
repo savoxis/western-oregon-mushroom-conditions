@@ -57,3 +57,16 @@ Built in one sitting from the same data files as the live page: USGS topo, the G
 - **Cost unchanged:** about 970 KB of script against Leaflet's 148 KB.
 
 Verdict: phase 1 passes on feasibility. The decision rule above still applies: wait for the hunting and fishing sites to run on MapLibre in real use and test on a phone before starting phase 2.
+
+## Phases 2 and 3 built behind a flag (Nov 22, 2026, `maplibre-spike` branch, not deployed)
+
+`?map=gl` now runs the real page on MapLibre. Without the flag nothing changes for anyone and MapLibre is not even downloaded (`gl-boot.js` loads it only when asked).
+
+Working in the preview with live data: the topo base, the heat surface (computed once per data change as an image, clipped to Oregon), all 41 zone markers with the same score icons, tooltips, keyboard activation and selection pulse, species and mode switching, the time machine, the land-ownership layer, sightings as one circle layer with the photo popup, the 2026 burn scars with their popups, "Show all burns", zoom buttons, the click-anywhere regional estimate, and fly-to with the side-panel offset. No console errors. If MapLibre cannot start (no WebGL), the page falls back to Leaflet by itself.
+
+Still to do before it could become the default:
+1. Phone test on real hardware (frame rate, battery, memory) and a compare against Leaflet on the same phone.
+2. Production header: `connect-src` must list the two tile hosts (basemap.nationalmap.gov and gis.blm.gov) and the map worker must be allowed (same origin, so `worker-src 'self'` is enough).
+3. Pixel polish: marker label timing at the zoom threshold, popup auto-pan under the top bar, attribution placement.
+4. Decide about clustering the sightings (MapLibre can do it natively; today they are plain dots).
+5. A week behind the flag with real users, then flip the default and keep the Leaflet path for one release.
