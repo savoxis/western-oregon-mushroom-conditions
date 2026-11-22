@@ -1937,43 +1937,21 @@ dash.draw('weekly', (el) => {
   rows.forEach((r) => { weeks[r.week - 1][r.family] = r.avg_zones; });
   weeks.forEach((o) => { o.total = FAMS.reduce((a, f) => a + o[f], 0); });
   if (S.week === null) S.week = weeks.reduce((b, o) => (o.total > b.total ? o : b), weeks[0]).week;
-  const H = 230, mt = 22, mb = 22;
-  const { s, w } = svgIn(el, H);
-  const tip = makeTip(el);
-  const ymax = d3.max(weeks, (o) => o.total) * 1.12;
-  const y = d3.scaleLinear().domain([0, ymax]).nice().range([H - mb, mt]);
-  const ticks = y.ticks(4);
-  const ml = measure(s, ticks.map(String)) + 12;
-  const x = d3.scaleBand().domain(weeks.map((o) => o.week)).range([ml, w - 6]).paddingInner(0.14);
-  ticks.forEach((tk) => {
-    s.append('line').attr('class', 'grid').attr('x1', ml).attr('x2', w - 6).attr('y1', y(tk)).attr('y2', y(tk));
-    s.append('text').attr('class', 'ax').attr('x', ml - 6).attr('y', y(tk) + 3).attr('text-anchor', 'end').text(tk);
-  });
-  MONTH_DOY.forEach((d) => {
-    const wk = Math.floor((d - 1) / 7) + 1;
-    s.append('text').attr('class', 'ax').attr('x', x(wk)).attr('y', H - 6).text(fMon(dDate(d)));
-  });
-  const series = d3.stack().keys(FAMS)(weeks);
-  series.forEach((layer) => {
-    s.append('g').selectAll('rect').data(layer).join('rect')
-      .attr('x', (d) => x(d.data.week)).attr('width', x.bandwidth())
-      .attr('y', (d) => y(d[1])).attr('height', (d) => Math.max(0, y(d[0]) - y(d[1])))
-      .attr('fill', FAM[layer.key].color).attr('rx', 1.2);
-  });
-  const selW = weeks[S.week - 1];
-  s.append('rect').attr('class', 'selband').attr('x', x(selW.week) - 2).attr('y', mt - 6).attr('width', x.bandwidth() + 4).attr('height', H - mb - mt + 6).attr('rx', 3);
   const peak = weeks.reduce((b, o) => (o.total > b.total ? o : b), weeks[0]);
-  const lx = clamp(x(peak.week) + x.bandwidth() / 2, 60, w - 60);
-  s.append('text').attr('class', 'ax strong').attr('x', lx).attr('y', y(peak.total) - 6).attr('text-anchor', 'middle').text('Busiest: week of ' + doyStr((peak.week - 1) * 7 + 1));
-  const hit = s.append('rect').attr('x', ml).attr('y', 0).attr('width', w - ml).attr('height', H).attr('fill', 'transparent').style('cursor', 'pointer');
-  const wkAt = (ev) => clamp(Math.floor((d3.pointer(ev, s.node())[0] - x.range()[0]) / x.step()) + 1, 1, 53);
-  hit.on('mousemove', (ev) => {
-    const o = weeks[wkAt(ev) - 1];
-    const d0 = (o.week - 1) * 7 + 1;
-    const lines = [{ t: doyStr(d0) + ' to ' + doyStr(Math.min(366, d0 + 6)), cls: 'tip-t' }, { t: o.total.toFixed(1) + ' zones typically in prime', cls: 'tip-l' }];
-    FAMS.forEach((f) => { if (o[f] > 0) lines.push({ sw: FAM[f].color, t: FAM[f].short + ' ' + o[f].toFixed(1), cls: 'tip-m' }); });
-    tip.show(ev, lines);
-  }).on('mouseleave', () => tip.hide()).on('click', (ev) => { S.week = wkAt(ev); redraw(['weekly', 'weeklens']); });
+  const colors = {};
+  FAMS.forEach((f) => { colors[f] = FAM[f].color; });
+  HChart.weekly(el, {
+    weeks: weeks, fams: FAMS, colors: colors, sel: S.week,
+    peak: { week: peak.week, total: peak.total, label: 'Busiest: week of ' + doyStr((peak.week - 1) * 7 + 1) },
+    ticks: MONTH_DOY.map((d) => ({ week: Math.floor((d - 1) / 7) + 1, label: fMon(dDate(d)) })),
+    tipLines: (o) => {
+      const d0 = (o.week - 1) * 7 + 1;
+      const lines = [{ t: doyStr(d0) + ' to ' + doyStr(Math.min(366, d0 + 6)), cls: 'tip-t' }, { t: o.total.toFixed(1) + ' zones typically in prime', cls: 'tip-l' }];
+      FAMS.forEach((f) => { if (o[f] > 0) lines.push({ sw: FAM[f].color, t: FAM[f].short + ' ' + o[f].toFixed(1), cls: 'tip-m' }); });
+      return lines;
+    },
+    onPick: (wk) => { S.week = clamp(wk, 1, 53); redraw(['weekly', 'weeklens']); }
+  });
 });
 dash.draw('weeklens', (el) => {
   const M = model();
@@ -2144,39 +2122,19 @@ dash.draw('years', (el) => {
   const rows = (bySeries(sy).get(S.series) || []).slice().sort((a, b) => a.year - b.year);
   if (!rows.length) { placeholder(el, 'Not enough history for this zone yet.'); return; }
   const fam = FAM[famOf(S.series.split('|')[1])].color;
-  const H = 250, mt = 22, mb = 24;
-  const { s, w } = svgIn(el, H);
-  const tip = makeTip(el);
   const full = rows.filter((r) => !r.partial);
   const avg = d3.mean(full, (r) => r.prime_days);
-  const y = d3.scaleLinear().domain([0, Math.max(10, d3.max(rows, (r) => r.prime_days))]).nice().range([H - mb, mt]);
-  const ticks = y.ticks(4);
-  const ml = measure(s, ticks.map(String)) + 12;
-  const x = d3.scaleBand().domain(rows.map((r) => r.year)).range([ml, w - 8]).paddingInner(0.22);
-  ticks.forEach((tk) => {
-    s.append('line').attr('class', 'grid').attr('x1', ml).attr('x2', w - 8).attr('y1', y(tk)).attr('y2', y(tk));
-    s.append('text').attr('class', 'ax').attr('x', ml - 6).attr('y', y(tk) + 3).attr('text-anchor', 'end').text(tk);
-  });
-  rows.forEach((r) => {
-    const bw = Math.min(x.bandwidth(), 36), bx = x(r.year) + (x.bandwidth() - bw) / 2;
-    const g = s.append('g').style('cursor', 'pointer');
-    g.append('rect').attr('x', bx).attr('width', bw).attr('y', y(r.prime_days)).attr('height', Math.max(0, y(0) - y(r.prime_days))).attr('rx', 3)
-      .attr('fill', fam).attr('opacity', r.partial ? 0.18 : 0.38);
-    g.append('rect').attr('x', bx).attr('width', bw).attr('y', y(r.go_days)).attr('height', Math.max(0, y(0) - y(r.go_days))).attr('rx', 3)
-      .attr('fill', fam).attr('opacity', r.partial ? 0.5 : 1);
-    if (r.year === S.syear) g.append('rect').attr('class', 'selbar').attr('x', bx - 3).attr('width', bw + 6).attr('y', mt - 4).attr('height', H - mb - mt + 4).attr('rx', 4);
-    s.append('text').attr('class', 'ax' + (r.year === S.syear ? ' strong' : '')).attr('x', x(r.year) + x.bandwidth() / 2).attr('y', H - 6).attr('text-anchor', 'middle').text(String(r.year).slice(2) + (r.partial ? '*' : ''));
-    if (bw >= 20) s.append('text').attr('class', 'ax val').attr('x', x(r.year) + x.bandwidth() / 2).attr('y', y(r.prime_days) - 4).attr('text-anchor', 'middle').text(r.prime_days);
-    g.append('rect').attr('x', x(r.year)).attr('width', x.bandwidth()).attr('y', 0).attr('height', H).attr('fill', 'transparent');
-    g.on('mousemove', (ev) => tip.show(ev, [
+  HChart.years(el, {
+    rows: rows.map((r) => Object.assign({}, r, { label: String(r.year).slice(2) + (r.partial ? '*' : ''), prime: r.prime_days, go: r.go_days })),
+    color: fam, avg: avg, sel: S.syear,
+    tipLines: (r) => [
       { t: r.year + (r.partial ? ' (so far)' : ''), cls: 'tip-t' },
       { sw: fam, t: r.prime_days + ' prime days (60+)' },
       { t: r.go_days + ' go-now days (80+)', cls: 'tip-m' },
       { t: r.first_prime ? 'Prime ' + doyStr(r.first_prime, r.year) + ' to ' + doyStr(r.last_prime, r.year) : 'Never reached prime', cls: 'tip-m' }
-    ])).on('mouseleave', () => tip.hide()).on('click', () => { S.syear = r.year; redraw(['calendar', 'years', 'yeartrace']); });
+    ],
+    onPick: (yr) => { S.syear = yr; redraw(['calendar', 'years', 'yeartrace']); }
   });
-  s.append('line').attr('class', 'avg').attr('x1', ml).attr('x2', w - 8).attr('y1', y(avg)).attr('y2', y(avg));
-  s.append('text').attr('class', 'ax strong').attr('x', w - 8).attr('y', y(avg) - 5).attr('text-anchor', 'end').text('Average ' + avg.toFixed(0) + ' days');
 });
 
 dash.draw('yeartrace', (el) => {
