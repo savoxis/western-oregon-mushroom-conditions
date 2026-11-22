@@ -896,6 +896,7 @@ const GL_IMPL = {
     }
     map.touchZoomRotate.disableRotation();
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+    map.once('idle', () => { const c = map.getContainer().querySelector('.maplibregl-ctrl-attrib'); if (c) { c.classList.remove('maplibregl-compact-show'); c.removeAttribute('open'); } });       // starts collapsed
     const made = { el, gl: map, isGL: true, markers: [], items: [], grid: [], fitted: false, ready: false, userMoved: false };
     const mine = () => Date.now() < (made.progUntil || 0);
     map.on('load', () => {
