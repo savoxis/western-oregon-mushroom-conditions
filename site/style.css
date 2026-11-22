@@ -529,3 +529,10 @@
 .tip-ev.none, .spot-ev.none { color: var(--red); }
 .tip-ev.thin, .spot-ev.thin { color: var(--amber); }
 .spot-ev { font-size: 12px; line-height: 1.4; }
+
+/* Recharts tooltip body (the chart positions it): same look as .tip */
+.rc-tip { min-width: 120px; max-width: 280px; padding: 7px 10px; background: var(--cds-surface-popover, var(--sh-panel)); border: 1px solid var(--sh-line); border-radius: 10px; box-shadow: var(--cds-shadow-popover); font-size: 12.5px; line-height: 1.4; }
+.rc-tip .tip-t { font-weight: 600; margin-bottom: 2px; }
+.rc-tip .tip-m { color: var(--sh-muted); }
+.rc-tip .tip-l { display: flex; align-items: center; gap: 6px; }
+.recharts-wrapper { max-width: 100%; }
