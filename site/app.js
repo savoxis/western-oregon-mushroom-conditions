@@ -712,7 +712,7 @@ const LEAFLET_IMPL = {
 /* ---------- MapLibre version of the map (opt in with ?map=gl; Leaflet stays the default and the fallback) ----------
    Same data, same markers, same popups; the heat surface is computed once per data change on a fixed lat/lon grid and handed to the GPU as an image,
    so panning and zooming no longer recompute it. MapLibre zoom = Leaflet zoom - 1 for these 256 px raster tiles. */
-const USE_GL = !!window.maplibregl && /(^|[?&])map=gl(&|$)/.test(location.search);
+const USE_GL = !!window.maplibregl && !/(^|[?&])map=leaflet(&|$)/.test(location.search);
 const EMPTY_FC = { type: 'FeatureCollection', features: [] };
 const HEAT_BOX = { w: -124.8, e: -116.4, s: 41.9, n: 46.4 };
 const HEAT_CORNERS = [[HEAT_BOX.w, HEAT_BOX.n], [HEAT_BOX.e, HEAT_BOX.n], [HEAT_BOX.e, HEAT_BOX.s], [HEAT_BOX.w, HEAT_BOX.s]];

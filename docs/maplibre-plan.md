@@ -1,6 +1,6 @@
 # Plan: moving the shrooms map from Leaflet to MapLibre GL JS
 
-Status: built behind `?map=gl` and deployed (Nov 22, 2026); Leaflet stays the default and the fallback.
+Status: MapLibre is the default (Nov 22, 2026, after a phone check). `?map=leaflet` opens the old Leaflet map; if MapLibre cannot start the page falls back to Leaflet by itself.
 
 ## Why consider it
 
