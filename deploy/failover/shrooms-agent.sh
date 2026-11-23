@@ -90,7 +90,8 @@ status() {
 main() {
   case "${1:-run}" in status) status; return;; sync) sync; return;; esac
   exec 9>/var/run/shrooms-agent.lock; flock -n 9 || return 0
-  read_rec; local rc=$?
+  local rc=1 try   # one failed Cloudflare API call is a blip (it cleared within a minute every time): retry before telling Kuma the agent is blind
+  for try in 1 2 3; do read_rec; rc=$?; [ $rc -eq 0 ] && break; sleep 5; done
   if [ $rc -ne 0 ]; then log "DNS record lookup problem (rc=$rc)"; k_state down "DNS record lookup problem (rc=$rc; is $RECORD_NAME an A record?) - agent blind"; return 1; fi
   local role; [ "$REC_IP" = "$VPS_IP" ] && role=vps || role=home
   local cool_ok=1; [ $(( $(now) - REC_MOD )) -lt "$COOLDOWN" ] && cool_ok=0
